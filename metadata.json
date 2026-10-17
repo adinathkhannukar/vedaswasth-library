@@ -1,0 +1,6 @@
+{
+  "name": "Veda Swasth Library",
+  "description": "Private, secure eBook reader for Veda Swasth wellness eBooks",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

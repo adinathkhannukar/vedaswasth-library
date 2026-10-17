@@ -1,0 +1,21 @@
+{
+  "name": "Veda Swasth Library",
+  "short_name": "VedaSwasth",
+  "description": "Private, secure eBook reader for Veda Swasth wellness eBooks",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf9f5",
+  "theme_color": "#064e3b",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=192&h=192&fit=crop",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=512&h=512&fit=crop",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
