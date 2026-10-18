@@ -2,7 +2,8 @@ import { EBook, Customer, AccessGrant, ReadingProgress, Bookmark, PromoBanner } 
 import { getSupabaseClient } from './supabaseConfig';
 
 export const ADMIN_EMAILS = [
-  'adinathkhannukar7084@gmail.com'
+  'adinathkhannukar7084@gmail.com',
+  '2005khannukaradinath@gmail.com'
 ];
 export const ADMIN_EMAIL = ADMIN_EMAILS[0];
 export const WHATSAPP_NUMBER = '918310828152'; // Admin WhatsApp number
@@ -197,9 +198,10 @@ export function getStoredEBooks(): EBook[] {
 }
 
 export async function fetchAndSyncEBooks(): Promise<EBook[]> {
-  const local = getStoredEBooks();
   const supabase = getSupabaseClient();
-  if (!supabase) return local;
+  if (!supabase) {
+    return getStoredEBooks();
+  }
 
   try {
     const { data, error } = await supabase.from('ebooks').select('*');
@@ -221,11 +223,35 @@ export async function fetchAndSyncEBooks(): Promise<EBook[]> {
       }));
       localStorage.setItem(STORAGE_KEYS.EBOOKS, JSON.stringify(remoteEbooks));
       return remoteEbooks;
+    } else {
+      // Auto-seed table if empty or non-existent
+      for (const eb of DEFAULT_EBOOKS) {
+        try {
+          await supabase.from('ebooks').upsert({
+            id: eb.id,
+            title: eb.title,
+            subtitle: eb.subtitle,
+            cover_image: eb.coverImage,
+            pdf_url: eb.pdfUrl,
+            pdf_path: eb.pdfPath || '',
+            description: eb.description,
+            cosmofeed_url: eb.cosmofeedUrl,
+            active: eb.active,
+            enable_sample: eb.enableSample ?? true,
+            sample_start_page: eb.sampleStartPage ?? 1,
+            sample_end_page: eb.sampleEndPage ?? 3,
+            created_at: eb.createdAt
+          }, { onConflict: 'id' });
+        } catch {
+          // ignore
+        }
+      }
+      return DEFAULT_EBOOKS;
     }
   } catch (err) {
-    console.error('Error fetching ebooks from Supabase:', err);
+    console.error('Error fetching ebooks from Supabase, using fallback:', err);
+    return getStoredEBooks();
   }
-  return local;
 }
 
 export async function saveEBooks(ebooks: EBook[]) {
@@ -272,9 +298,10 @@ export function getStoredCustomers(): Customer[] {
 }
 
 export async function fetchAndSyncCustomers(): Promise<Customer[]> {
-  const local = getStoredCustomers();
   const supabase = getSupabaseClient();
-  if (!supabase) return local;
+  if (!supabase) {
+    return getStoredCustomers();
+  }
 
   try {
     const { data, error } = await supabase.from('customers').select('*');
@@ -287,7 +314,6 @@ export async function fetchAndSyncCustomers(): Promise<Customer[]> {
         notes: item.notes,
         createdAt: item.created_at || item.createdAt || new Date().toISOString()
       }));
-      // Ensure admins are present
       for (const adm of ADMIN_EMAILS) {
         if (!remoteCustomers.some(c => c.email.toLowerCase() === adm.toLowerCase())) {
           remoteCustomers.unshift({
@@ -306,7 +332,7 @@ export async function fetchAndSyncCustomers(): Promise<Customer[]> {
   } catch (err) {
     console.error('Error fetching customers from Supabase:', err);
   }
-  return local;
+  return getStoredCustomers();
 }
 
 export function saveCustomers(customers: Customer[]) {
