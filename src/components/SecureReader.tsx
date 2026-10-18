@@ -201,7 +201,9 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
 
   const handlePrevPage = () => {
     const minLimit = isPreview ? (ebook.sampleStartPage ?? 1) : 1;
-    if (pageNum > minLimit) setPageNum(pageNum - 1);
+    if (pageNum > minLimit) {
+      setPageNum(prev => Math.max(minLimit, prev - 1));
+    }
   };
 
   const handleNextPage = () => {
@@ -363,7 +365,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
         {loading ? (
           <div className="flex flex-col items-center justify-center space-y-3 py-20">
             <Loader2 className="w-8 h-8 animate-spin text-[#047857]" />
-            <p className="text-xs font-medium text-[#526052]">Loading eBook from Supabase Storage...</p>
+            <p className="text-xs font-medium text-[#526052]">Loading eBook...</p>
           </div>
         ) : error ? (
           <div className="bg-[#fee2e2] border border-[#fca5a5] text-[#991b1b] p-6 rounded-2xl max-w-md text-center space-y-2">
@@ -408,7 +410,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
       <div className="bg-[#f5f0e1]/90 dark:bg-[#18221d]/90 backdrop-blur-md border-t border-[#e5dec9] dark:border-[#2a3830] px-4 py-3 flex items-center justify-between z-20 shadow-xs">
         <button
           onClick={handlePrevPage}
-          disabled={pageNum <= startPg}
+          disabled={pageNum <= (isPreview ? (ebook.sampleStartPage ?? 1) : 1)}
           className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-[#e5dec9] dark:bg-[#2a3830] text-[#064e3b] dark:text-[#a7f3d0] font-medium text-xs hover:bg-[#d8ceb4] transition-colors disabled:opacity-40"
         >
           <ChevronLeft className="w-4 h-4" />
