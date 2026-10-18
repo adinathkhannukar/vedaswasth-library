@@ -97,11 +97,11 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
 
     const loadPdf = async () => {
       try {
-        let pdfUrl = ebook.pdfUrl;
+        let fileUrl = ebook.pdfUrl;
         const path = (ebook.pdfPath || '').trim();
 
         if (path.startsWith('http://') || path.startsWith('https://')) {
-          pdfUrl = path;
+          fileUrl = path;
         } else if (path) {
           const supabase = getSupabaseClient();
           if (supabase) {
@@ -109,35 +109,53 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
               .from('secure-ebooks')
               .getPublicUrl(path);
             if (data?.publicUrl) {
-              pdfUrl = encodeURI(data.publicUrl);
+              fileUrl = encodeURI(data.publicUrl);
             }
           }
         }
 
-        if (pdfUrl && pdfUrl.startsWith('idb://')) {
-          const idbKey = pdfUrl.replace('idb://', '');
+        if (fileUrl && fileUrl.startsWith('idb://')) {
+          const idbKey = fileUrl.replace('idb://', '');
           const cached = await getFileFromIDB(idbKey);
           if (cached) {
-            pdfUrl = cached;
+            fileUrl = cached;
           }
         }
 
-        let pdfSource: any;
-        if (pdfUrl && pdfUrl.startsWith('data:')) {
-          const base64Data = pdfUrl.split(',')[1];
-          const binaryString = atob(base64Data);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
+        let doc: any;
+        try {
+          if (fileUrl && fileUrl.startsWith('data:')) {
+            const base64Data = fileUrl.split(',')[1];
+            const binaryString = atob(base64Data);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const loadingTask = pdfjsLib.getDocument({ data: bytes });
+            doc = await loadingTask.promise;
+          } else {
+            const loadingTask = pdfjsLib.getDocument({ url: fileUrl, withCredentials: false });
+            doc = await loadingTask.promise;
           }
-          pdfSource = { data: bytes };
-        } else {
-          pdfSource = { url: pdfUrl, withCredentials: false };
+        } catch (initialErr) {
+          console.warn('Direct URL load failed, trying signed URL fallback:', initialErr);
+          const supabase = getSupabaseClient();
+          if (supabase && path && !path.startsWith('http')) {
+            const { data: signed, error: signErr } = await supabase.storage
+              .from('secure-ebooks')
+              .createSignedUrl(path, 3600);
+            if (!signErr && signed?.signedUrl) {
+              const taskSigned = pdfjsLib.getDocument({ url: signed.signedUrl, withCredentials: false });
+              doc = await taskSigned.promise;
+            } else {
+              throw initialErr;
+            }
+          } else {
+            throw initialErr;
+          }
         }
 
-        const loadingTask = pdfjsLib.getDocument(pdfSource);
-        const doc = await loadingTask.promise;
         if (!isMounted) return;
         setPdfDoc(doc);
         setNumPages(doc.numPages);

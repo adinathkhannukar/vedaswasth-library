@@ -26,24 +26,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#fbf9f5]/95 backdrop-blur-md border-b border-[#e5dec9] w-full max-w-full overflow-hidden px-3 py-2.5 shadow-xs">
+    <header className="sticky top-0 z-40 bg-[#fbf9f5]/95 backdrop-blur-md border-b border-[#e5dec9] w-full max-w-full box-border px-3 py-2 flex items-center justify-between overflow-hidden">
       <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-2">
         <div 
-          className="flex items-center space-x-2.5 cursor-pointer group min-w-0"
+          className="flex items-center space-x-2 cursor-pointer group min-w-0"
           onClick={() => onViewChange('library')}
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#064e3b] text-[#f4ecd8] flex items-center justify-center font-serif text-base sm:text-lg font-bold shadow-sm group-hover:scale-105 transition-transform shrink-0">
+          <div className="w-9 h-9 rounded-full bg-[#064e3b] text-[#f4ecd8] flex items-center justify-center font-serif text-base font-bold shadow-sm group-hover:scale-105 transition-transform shrink-0">
             VS
           </div>
           <div className="min-w-0">
-            <h1 className="font-serif text-base sm:text-lg font-bold text-[#064e3b] tracking-wide truncate">
+            <h1 className="font-serif text-sm sm:text-base font-bold text-[#064e3b] tracking-wide truncate">
               Veda Swasth Library
             </h1>
-            <p className="text-[11px] text-[#5c6e65] hidden sm:block">Private Wellness Sanctuary</p>
+            <p className="text-[10px] text-[#5c6e65] hidden sm:block">Private Wellness Sanctuary</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {currentUser && (
             <>
               {currentView === 'reader' && (
@@ -79,7 +79,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={handleWhatsApp}
                 title="Need Help? Chat on WhatsApp"
-                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-[#25d366]/15 text-[#075e54] text-xs font-medium hover:bg-[#25d366]/25 transition-colors border border-[#25d366]/30"
+                className="flex items-center space-x-1 px-2 py-1.5 rounded-lg bg-[#25d366]/15 text-[#075e54] text-xs font-medium hover:bg-[#25d366]/25 transition-colors border border-[#25d366]/30"
               >
                 <MessageCircle className="w-3.5 h-3.5 text-[#25d366]" />
                 <span className="hidden sm:inline">Help</span>
@@ -88,7 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onLogout}
                 title="Sign Out"
-                className="p-1.5 sm:p-2 rounded-lg text-[#6b7280] hover:text-[#991b1b] hover:bg-[#fee2e2]/50 transition-colors"
+                className="p-1.5 rounded-lg text-[#6b7280] hover:text-[#991b1b] hover:bg-[#fee2e2]/50 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </button>

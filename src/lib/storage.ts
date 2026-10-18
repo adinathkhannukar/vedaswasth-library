@@ -91,7 +91,7 @@ const DEFAULT_EBOOKS: EBook[] = [
     id: 'eb-5',
     title: 'How To Balance Your 7 Chakras',
     subtitle: 'Aligning your subtle energy centers for vibrant health and emotional equilibrium',
-    coverImage: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&h=800&fit=crop',
+    coverImage: 'https://images.unsplash.com/photo-1512438248247-f0f2a5a8b7f0?w=600&h=800&fit=crop',
     pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     pdfPath: 'how to balance 7 chakras.pdf',
     description: 'A practical guide to diagnosing imbalances in your root, sacral, solar plexus, heart, throat, third eye, and crown chakras.',
@@ -106,7 +106,7 @@ const DEFAULT_EBOOKS: EBook[] = [
     id: 'eb-6',
     title: '50 Powerful Hand Mudras',
     subtitle: 'Ancient gestures of healing, consciousness, and vital energy redirection',
-    coverImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&h=800&fit=crop',
+    coverImage: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&h=800&fit=crop',
     pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     pdfPath: 'New Mudra E-Book Guide.pdf',
     description: 'Discover how simple hand gestures (mudras) can heal ailments, sharpen focus, and awaken higher spiritual dimensions.',
@@ -151,17 +151,19 @@ const DEFAULT_GRANTS: AccessGrant[] = [
   { id: 'g-2', customerId: 'cust-admin-1', ebookId: 'eb-2', grantedAt: new Date().toISOString() },
   { id: 'g-3', customerId: 'cust-admin-1', ebookId: 'eb-3', grantedAt: new Date().toISOString() },
   { id: 'g-4', customerId: 'cust-admin-1', ebookId: 'eb-4', grantedAt: new Date().toISOString() },
-  { id: 'g-5', customerId: 'cust-admin-2', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
-  { id: 'g-6', customerId: 'cust-admin-2', ebookId: 'eb-2', grantedAt: new Date().toISOString() },
-  { id: 'g-7', customerId: 'cust-1', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
-  { id: 'g-8', customerId: 'cust-1', ebookId: 'eb-2', grantedAt: new Date().toISOString() }
+  { id: 'g-5', customerId: 'cust-admin-1', ebookId: 'eb-5', grantedAt: new Date().toISOString() },
+  { id: 'g-6', customerId: 'cust-admin-1', ebookId: 'eb-6', grantedAt: new Date().toISOString() },
+  { id: 'g-7', customerId: 'cust-admin-2', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
+  { id: 'g-8', customerId: 'cust-admin-2', ebookId: 'eb-2', grantedAt: new Date().toISOString() },
+  { id: 'g-9', customerId: 'cust-1', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
+  { id: 'g-10', customerId: 'cust-1', ebookId: 'eb-2', grantedAt: new Date().toISOString() }
 ];
 
 const DEFAULT_PROMOS: PromoBanner[] = [
   {
     id: 'promo-1',
     title: 'Complete Veda Swasth Masterclass Bundle',
-    subtitle: 'Unlock all 4 transformative wellness & Ayurveda guides at 50% special discount today.',
+    subtitle: 'Unlock all 6 transformative wellness & Ayurveda guides at 50% special discount today.',
     imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&h=500&fit=crop',
     linkUrl: 'https://cosmofeed.com/vig/all-masterclasses-bundle',
     buttonText: 'Claim 50% Off Offer',
