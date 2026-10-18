@@ -89,7 +89,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     };
   }, []);
 
-  // Load PDF Document from Supabase Storage or fallback
+  // Load PDF Document from Supabase Storage
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -97,41 +97,30 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
 
     const loadPdf = async () => {
       try {
-        let rawPdfUrl = ebook.pdfUrl;
+        let pdfUrl = ebook.pdfUrl;
         const supabase = getSupabaseClient();
 
         if (supabase && ebook.pdfPath) {
-          try {
-            const { data, error: signedErr } = await supabase.storage
-              .from('secure-ebooks')
-              .createSignedUrl(ebook.pdfPath, 3600);
+          const { data } = supabase.storage
+            .from('secure-ebooks')
+            .getPublicUrl(ebook.pdfPath);
 
-            if (data?.signedUrl) {
-              rawPdfUrl = data.signedUrl;
-            } else {
-              const { data: pubData } = supabase.storage
-                .from('secure-ebooks')
-                .getPublicUrl(ebook.pdfPath);
-              if (pubData?.publicUrl) {
-                rawPdfUrl = pubData.publicUrl;
-              }
-            }
-          } catch (storageErr) {
-            console.warn('Supabase storage signed URL fetch warning:', storageErr);
+          if (data?.publicUrl) {
+            pdfUrl = data.publicUrl;
           }
         }
 
-        if (rawPdfUrl && rawPdfUrl.startsWith('idb://')) {
-          const idbKey = rawPdfUrl.replace('idb://', '');
+        if (pdfUrl && pdfUrl.startsWith('idb://')) {
+          const idbKey = pdfUrl.replace('idb://', '');
           const cached = await getFileFromIDB(idbKey);
           if (cached) {
-            rawPdfUrl = cached;
+            pdfUrl = cached;
           }
         }
 
         let pdfSource: any;
-        if (rawPdfUrl && rawPdfUrl.startsWith('data:')) {
-          const base64Data = rawPdfUrl.split(',')[1];
+        if (pdfUrl && pdfUrl.startsWith('data:')) {
+          const base64Data = pdfUrl.split(',')[1];
           const binaryString = atob(base64Data);
           const len = binaryString.length;
           const bytes = new Uint8Array(len);
@@ -140,7 +129,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
           }
           pdfSource = { data: bytes };
         } else {
-          pdfSource = { url: rawPdfUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' };
+          pdfSource = { url: pdfUrl };
         }
 
         const loadingTask = pdfjsLib.getDocument(pdfSource);
@@ -150,19 +139,10 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
         setNumPages(doc.numPages);
         setLoading(false);
       } catch (err) {
-        console.error('Error loading PDF:', err);
+        console.error('Error loading PDF from Supabase:', err);
         if (!isMounted) return;
-        try {
-          const fallbackTask = pdfjsLib.getDocument({ url: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' });
-          const doc = await fallbackTask.promise;
-          if (!isMounted) return;
-          setPdfDoc(doc);
-          setNumPages(doc.numPages);
-          setLoading(false);
-        } catch (fallbackErr) {
-          setError('Unable to securely load encrypted PDF document. Please check network connection.');
-          setLoading(false);
-        }
+        setError('Unable to load eBook file from Supabase. Please verify the file name.');
+        setLoading(false);
       }
     };
 
@@ -379,7 +359,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
         {loading ? (
           <div className="flex flex-col items-center justify-center space-y-3 py-20">
             <Loader2 className="w-8 h-8 animate-spin text-[#047857]" />
-            <p className="text-xs font-medium text-[#526052]">Loading secure document from Supabase Storage...</p>
+            <p className="text-xs font-medium text-[#526052]">Loading eBook from Supabase Storage...</p>
           </div>
         ) : error ? (
           <div className="bg-[#fee2e2] border border-[#fca5a5] text-[#991b1b] p-6 rounded-2xl max-w-md text-center space-y-2">
