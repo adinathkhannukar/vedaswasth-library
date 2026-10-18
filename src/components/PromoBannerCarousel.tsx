@@ -66,7 +66,7 @@ export const PromoBannerCarousel: React.FC = () => {
 
   return (
     <div 
-      className="relative rounded-3xl overflow-hidden shadow-lg border border-[#d4cbb3] bg-gradient-to-r from-[#064e3b] to-[#047857] text-[#f4ecd8] transition-all group"
+      className="relative rounded-3xl overflow-hidden shadow-xl border border-[#d4cbb3] bg-[#064e3b] text-[#f4ecd8] transition-all group aspect-[16/9] sm:aspect-[21/9] md:aspect-[16/9] min-h-[260px] flex flex-col justify-center"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -76,7 +76,7 @@ export const PromoBannerCarousel: React.FC = () => {
           e.stopPropagation();
           setIsVisible(false);
         }}
-        className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors shadow-sm"
+        className="absolute top-4 right-4 z-30 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-colors shadow-md"
         title="Hide Promotion"
       >
         <X className="w-4 h-4" />
@@ -84,39 +84,43 @@ export const PromoBannerCarousel: React.FC = () => {
 
       <div 
         onClick={handleClickBanner}
-        className="cursor-pointer flex flex-col md:flex-row items-center relative min-h-[220px]"
+        className="cursor-pointer absolute inset-0 flex items-center"
       >
         {/* Background Image / Poster */}
         {(resolvedImageUrl || currentPromo.imageUrl) && (
-          <div className="absolute inset-0 opacity-25 md:opacity-35 mix-blend-overlay overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden">
             <img 
               src={resolvedImageUrl || currentPromo.imageUrl} 
               alt={currentPromo.title} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
             />
           </div>
         )}
 
-        <div className="relative z-10 p-6 sm:p-10 flex-1 space-y-4 max-w-2xl">
+        {/* Left-heavy gradient overlay for crystal clear text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#064e3b]/95 via-[#064e3b]/80 to-transparent pointer-events-none"></div>
+
+        {/* Content */}
+        <div className="relative z-20 p-6 sm:p-10 md:p-12 max-w-xl space-y-4">
           {currentPromo.badgeText && (
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#fbbf24] text-[#064e3b] text-xs font-bold uppercase tracking-wider shadow-sm">
+            <div className="inline-flex items-center space-x-1.5 px-3.5 py-1 rounded-full bg-[#fbbf24] text-[#064e3b] text-xs font-bold uppercase tracking-wider shadow-md">
               <Sparkles className="w-3.5 h-3.5" />
               <span>{currentPromo.badgeText}</span>
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <h3 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight">
+          <div className="space-y-2">
+            <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white leading-tight drop-shadow-sm">
               {currentPromo.title}
             </h3>
-            <p className="text-sm sm:text-base text-[#d1fae5] leading-relaxed line-clamp-2">
+            <p className="text-xs sm:text-sm md:text-base text-[#e2f8ec] leading-relaxed line-clamp-3 font-normal drop-shadow-sm">
               {currentPromo.subtitle}
             </p>
           </div>
 
           {currentPromo.buttonText && (
-            <div className="pt-2">
-              <span className="inline-flex items-center space-x-2 px-5 py-2.5 bg-[#fbbf24] text-[#064e3b] rounded-xl font-bold text-sm hover:bg-[#f59e0b] transition-colors shadow-md">
+            <div className="pt-1">
+              <span className="inline-flex items-center space-x-2 px-6 py-3 bg-[#fbbf24] text-[#064e3b] rounded-xl font-bold text-xs sm:text-sm hover:bg-[#f59e0b] transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-200">
                 <span>{currentPromo.buttonText}</span>
                 <ExternalLink className="w-4 h-4" />
               </span>
@@ -130,19 +134,19 @@ export const PromoBannerCarousel: React.FC = () => {
         <>
           <button
             onClick={handlePrev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors opacity-75 group-hover:opacity-100 shadow-sm"
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors opacity-75 group-hover:opacity-100 shadow-sm"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={handleNext}
-            className="absolute right-12 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors opacity-75 group-hover:opacity-100 shadow-sm"
+            className="absolute right-12 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors opacity-75 group-hover:opacity-100 shadow-sm"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
 
           {/* Dots Indicator */}
-          <div className="absolute bottom-3 right-6 z-20 flex items-center space-x-1.5">
+          <div className="absolute bottom-3 right-6 z-30 flex items-center space-x-1.5">
             {promos.map((_, idx) => (
               <button
                 key={idx}
