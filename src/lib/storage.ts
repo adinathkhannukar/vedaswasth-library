@@ -2,8 +2,7 @@ import { EBook, Customer, AccessGrant, ReadingProgress, Bookmark, PromoBanner } 
 import { getSupabaseClient } from './supabaseConfig';
 
 export const ADMIN_EMAILS = [
-  'adinathkhannukar7084@gmail.com',
-  '2005khannukaradinath@gmail.com'
+  'adinathkhannukar7084@gmail.com'
 ];
 export const ADMIN_EMAIL = ADMIN_EMAILS[0];
 export const WHATSAPP_NUMBER = '918310828152'; // Admin WhatsApp number
