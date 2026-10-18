@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Customer, EBook } from '../types';
-import { getStoredEBooks, getStoredGrants, getStoredProgress } from '../lib/storage';
+import { getStoredEBooks, fetchAndSyncEBooks, getStoredGrants, getStoredProgress } from '../lib/storage';
 import { EBookCover } from './EBookCover';
 import { BookOpen, Lock, ExternalLink, Play, Sparkles, CheckCircle2, Search, X } from 'lucide-react';
 import { PromoBannerCarousel } from './PromoBannerCarousel';
@@ -18,8 +18,15 @@ export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'mine' | 'store'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [ebooksList, setEbooksList] = useState<EBook[]>(getStoredEBooks());
 
-  const ebooks = getStoredEBooks().filter(e => e.active);
+  useEffect(() => {
+    fetchAndSyncEBooks().then(res => {
+      setEbooksList(res);
+    });
+  }, []);
+
+  const ebooks = ebooksList.filter(e => e.active);
   const grants = getStoredGrants().filter(g => g.customerId === currentUser.id);
   const ownedEbookIds = new Set(grants.map(g => g.ebookId));
   const progressList = getStoredProgress().filter(p => p.customerId === currentUser.id);
@@ -154,43 +161,47 @@ export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
                 return (
                   <div
                     key={ebook.id}
-                    className="bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group"
+                    className="bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
                   >
-                    <div className="aspect-[3/4] relative overflow-hidden bg-[#e5dec9]">
-                      <EBookCover
-                        coverUrl={ebook.coverImage}
-                        alt={ebook.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute top-3 right-3 bg-[#064e3b] text-[#fbbf24] px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1 shadow-sm">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Unlocked</span>
+                    <div>
+                      <div className="aspect-[3/4] relative overflow-hidden bg-[#e5dec9]">
+                        <EBookCover
+                          coverUrl={ebook.coverImage}
+                          alt={ebook.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute top-3 right-3 bg-[#064e3b] text-[#fbbf24] px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1 shadow-sm">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Unlocked</span>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4">
+                        <div className="space-y-1.5">
+                          <h4 className="font-serif text-lg font-bold text-[#064e3b] line-clamp-1">
+                            {ebook.title}
+                          </h4>
+                          <p className="text-xs text-[#526052] line-clamp-2">
+                            {ebook.subtitle}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-[#e2d8be]">
+                          <div className="flex justify-between text-xs text-[#627065]">
+                            <span>Reading Progress</span>
+                            <span className="font-semibold text-[#064e3b]">{prog.percent}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-[#e5dec9] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#047857] rounded-full transition-all duration-300"
+                              style={{ width: `${prog.percent}%` }}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                      <div className="space-y-1.5">
-                        <h4 className="font-serif text-lg font-bold text-[#064e3b] line-clamp-1">
-                          {ebook.title}
-                        </h4>
-                        <p className="text-xs text-[#526052] line-clamp-2">
-                          {ebook.subtitle}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2 pt-2 border-t border-[#e2d8be]">
-                        <div className="flex justify-between text-xs text-[#627065]">
-                          <span>Reading Progress</span>
-                          <span className="font-semibold text-[#064e3b]">{prog.percent}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-[#e5dec9] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[#047857] rounded-full transition-all duration-300"
-                            style={{ width: `${prog.percent}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
+                    <div className="p-5 pt-0">
                       <button
                         onClick={() => onOpenReader(ebook)}
                         className="w-full py-3 bg-[#064e3b] text-[#f4ecd8] rounded-xl font-semibold hover:bg-[#043d2e] transition-colors flex items-center justify-center space-x-2 shadow-xs text-sm"
@@ -231,48 +242,54 @@ export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
               {moreEbooks.map((ebook) => (
                 <div
                   key={ebook.id}
-                  className="bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group relative opacity-95 hover:opacity-100"
+                  className="bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative opacity-95 hover:opacity-100"
                 >
-                  <div className="aspect-[3/4] relative overflow-hidden bg-[#e5dec9]">
-                    <EBookCover
-                      coverUrl={ebook.coverImage}
-                      alt={ebook.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95"
-                    />
-                    <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md text-[#fbbf24] px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1 shadow-sm">
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Locked</span>
+                  <div>
+                    <div className="aspect-[3/4] relative overflow-hidden bg-[#e5dec9]">
+                      <EBookCover
+                        coverUrl={ebook.coverImage}
+                        alt={ebook.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95"
+                      />
+                      <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md text-[#fbbf24] px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1 shadow-sm">
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Locked</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                    <div className="space-y-1.5">
-                      <h4 className="font-serif text-lg font-bold text-[#064e3b] line-clamp-1">
-                        {ebook.title}
-                      </h4>
-                      <p className="text-xs text-[#526052] line-clamp-2">
+                    <div className="p-5 space-y-4">
+                      <div className="space-y-1.5">
+                        <h4 className="font-serif text-lg font-bold text-[#064e3b] line-clamp-1">
+                          {ebook.title}
+                        </h4>
+                        <p className="text-xs text-[#526052] line-clamp-2">
+                          {ebook.subtitle}
+                        </p>
+                      </div>
+
+                      <p className="text-xs text-[#627065] line-clamp-2 leading-relaxed">
                         {ebook.description}
                       </p>
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      {ebook.enableSample !== false && (
-                        <button
-                          onClick={() => onOpenPreview(ebook)}
-                          className="py-2.5 px-2 bg-[#e8e2d0] text-[#064e3b] rounded-xl font-semibold hover:bg-[#ded6c0] transition-colors flex items-center justify-center space-x-1 shadow-xs text-xs"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          <span>Free Sample</span>
-                        </button>
-                      )}
+                  <div className="p-5 pt-0 flex items-center space-x-2">
+                    {ebook.enableSample && (
                       <button
-                        onClick={() => handleBuyNow(ebook.cosmofeedUrl)}
-                        className={`${ebook.enableSample !== false ? '' : 'col-span-2'} py-2.5 px-2 bg-[#d97706] text-white rounded-xl font-semibold hover:bg-[#b45309] transition-colors flex items-center justify-center space-x-1 shadow-xs text-xs`}
+                        onClick={() => onOpenPreview(ebook)}
+                        className="flex-1 py-3 bg-[#e5dec9] text-[#064e3b] rounded-xl font-semibold hover:bg-[#d8ceb4] transition-colors flex items-center justify-center space-x-1.5 text-xs shadow-xs"
                       >
-                        <span>Buy Now</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Free Sample</span>
                       </button>
-                    </div>
+                    )}
+                    <button
+                      onClick={() => handleBuyNow(ebook.cosmofeedUrl)}
+                      className="flex-1 py-3 bg-[#d97706] text-white rounded-xl font-semibold hover:bg-[#b45309] transition-colors flex items-center justify-center space-x-1.5 text-xs shadow-md"
+                    >
+                      <span>Buy Now</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               ))}

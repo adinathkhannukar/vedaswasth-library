@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Customer } from '../types';
-import { getStoredCustomers, getSessionId, WHATSAPP_NUMBER, ADMIN_EMAIL } from '../lib/storage';
+import { getStoredCustomers, getSessionId, WHATSAPP_NUMBER, isAdminEmail } from '../lib/storage';
 import { getSupabaseClient } from '../lib/supabaseConfig';
 import { Lock, Mail, ArrowRight, ShieldCheck, MessageCircle, Sparkles } from 'lucide-react';
 
@@ -32,7 +32,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const trimmedEmail = email.trim().toLowerCase();
     let hasAccess = false;
 
-    if (trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
+    if (isAdminEmail(trimmedEmail)) {
       hasAccess = true;
     }
 
@@ -99,13 +99,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const customers = getStoredCustomers();
     let customer = customers.find(c => c.email.toLowerCase() === trimmedEmail);
 
-    if (!customer && trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
+    if (!customer && isAdminEmail(trimmedEmail)) {
       customer = {
         id: 'cust-admin-' + Date.now(),
-        email: ADMIN_EMAIL,
+        email: trimmedEmail,
         name: 'Adinath',
         activeSessionId: getSessionId(),
-        notes: 'Administrator',
+        notes: 'Platform Administrator',
         createdAt: new Date().toISOString()
       };
       customers.push(customer);

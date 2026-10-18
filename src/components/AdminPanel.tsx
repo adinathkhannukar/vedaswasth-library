@@ -3,7 +3,7 @@ import { Customer, EBook, AccessGrant, PromoBanner } from '../types';
 import { 
   getStoredEBooks, saveEBooks, getStoredCustomers, saveCustomers, 
   getStoredGrants, saveGrants, getStoredProgress, saveProgress, 
-  getStoredBookmarks, saveBookmarks, ADMIN_EMAIL,
+  getStoredBookmarks, saveBookmarks, ADMIN_EMAILS, isAdminEmail,
   getStoredPromos, savePromos, getPromoEnabled, setPromoEnabled
 } from '../lib/storage';
 import { getStoredSupabaseConfig, saveSupabaseConfig, getSupabaseClient } from '../lib/supabaseConfig';
@@ -215,7 +215,7 @@ export const AdminPanel: React.FC = () => {
       updated = [newEb, ...ebooks];
     }
     setEbooks(updated);
-    saveEBooks(updated);
+    await saveEBooks(updated);
     setEditingEbook(null);
     setShowEbookModal(false);
   };
@@ -335,7 +335,7 @@ export const AdminPanel: React.FC = () => {
   };
 
   const handleDeleteCustomer = (customerId: string, customerEmail: string) => {
-    if (customerEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    if (isAdminEmail(customerEmail)) {
       alert('Cannot delete the main admin account.');
       return;
     }
@@ -399,7 +399,7 @@ export const AdminPanel: React.FC = () => {
           </p>
         </div>
         <div className="bg-[#043d2e] px-4 py-2 rounded-xl text-xs font-mono text-[#fbbf24] border border-[#047857]">
-          Admin: {ADMIN_EMAIL}
+          Admin: {ADMIN_EMAILS.join(', ')}
         </div>
       </div>
 

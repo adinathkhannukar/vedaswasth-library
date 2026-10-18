@@ -1,7 +1,17 @@
 import { EBook, Customer, AccessGrant, ReadingProgress, Bookmark, PromoBanner } from '../types';
+import { getSupabaseClient } from './supabaseConfig';
 
-export const ADMIN_EMAIL = 'adinathkhannukar7084@gmail.com';
+export const ADMIN_EMAILS = [
+  'adinathkhannukar7084@gmail.com',
+  '2005khannukaradinath@gmail.com'
+];
+export const ADMIN_EMAIL = ADMIN_EMAILS[0];
 export const WHATSAPP_NUMBER = '918310828152'; // Admin WhatsApp number
+
+export function isAdminEmail(email: string): boolean {
+  if (!email) return false;
+  return ADMIN_EMAILS.some(e => e.toLowerCase() === email.trim().toLowerCase());
+}
 
 const STORAGE_KEYS = {
   EBOOKS: 'veda_swasth_ebooks',
@@ -111,10 +121,18 @@ const DEFAULT_EBOOKS: EBook[] = [
 
 const DEFAULT_CUSTOMERS: Customer[] = [
   {
-    id: 'cust-admin',
-    email: ADMIN_EMAIL,
+    id: 'cust-admin-1',
+    email: ADMIN_EMAILS[0],
     name: 'Adinath',
     activeSessionId: 'session-admin-1',
+    notes: 'Platform Administrator',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'cust-admin-2',
+    email: ADMIN_EMAILS[1],
+    name: 'Adinath',
+    activeSessionId: 'session-admin-2',
     notes: 'Platform Administrator',
     createdAt: new Date().toISOString()
   },
@@ -129,12 +147,14 @@ const DEFAULT_CUSTOMERS: Customer[] = [
 ];
 
 const DEFAULT_GRANTS: AccessGrant[] = [
-  { id: 'g-1', customerId: 'cust-admin', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
-  { id: 'g-2', customerId: 'cust-admin', ebookId: 'eb-2', grantedAt: new Date().toISOString() },
-  { id: 'g-3', customerId: 'cust-admin', ebookId: 'eb-3', grantedAt: new Date().toISOString() },
-  { id: 'g-4', customerId: 'cust-admin', ebookId: 'eb-4', grantedAt: new Date().toISOString() },
-  { id: 'g-5', customerId: 'cust-1', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
-  { id: 'g-6', customerId: 'cust-1', ebookId: 'eb-2', grantedAt: new Date().toISOString() }
+  { id: 'g-1', customerId: 'cust-admin-1', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
+  { id: 'g-2', customerId: 'cust-admin-1', ebookId: 'eb-2', grantedAt: new Date().toISOString() },
+  { id: 'g-3', customerId: 'cust-admin-1', ebookId: 'eb-3', grantedAt: new Date().toISOString() },
+  { id: 'g-4', customerId: 'cust-admin-1', ebookId: 'eb-4', grantedAt: new Date().toISOString() },
+  { id: 'g-5', customerId: 'cust-admin-2', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
+  { id: 'g-6', customerId: 'cust-admin-2', ebookId: 'eb-2', grantedAt: new Date().toISOString() },
+  { id: 'g-7', customerId: 'cust-1', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
+  { id: 'g-8', customerId: 'cust-1', ebookId: 'eb-2', grantedAt: new Date().toISOString() }
 ];
 
 const DEFAULT_PROMOS: PromoBanner[] = [
@@ -175,8 +195,64 @@ export function getStoredEBooks(): EBook[] {
   }
 }
 
-export function saveEBooks(ebooks: EBook[]) {
+export async function fetchAndSyncEBooks(): Promise<EBook[]> {
+  const local = getStoredEBooks();
+  const supabase = getSupabaseClient();
+  if (!supabase) return local;
+
+  try {
+    const { data, error } = await supabase.from('ebooks').select('*');
+    if (!error && data && data.length > 0) {
+      const remoteEbooks: EBook[] = data.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        subtitle: item.subtitle,
+        coverImage: item.cover_image || item.coverImage,
+        pdfUrl: item.pdf_url || item.pdfUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        pdfPath: item.pdf_path || item.pdfPath,
+        description: item.description,
+        cosmofeedUrl: item.cosmofeed_url || item.cosmofeedUrl,
+        active: item.active ?? true,
+        enableSample: item.enable_sample ?? item.enableSample ?? true,
+        sampleStartPage: item.sample_start_page ?? item.sampleStartPage ?? 1,
+        sampleEndPage: item.sample_end_page ?? item.sampleEndPage ?? 3,
+        createdAt: item.created_at || item.createdAt || new Date().toISOString()
+      }));
+      localStorage.setItem(STORAGE_KEYS.EBOOKS, JSON.stringify(remoteEbooks));
+      return remoteEbooks;
+    }
+  } catch (err) {
+    console.error('Error fetching ebooks from Supabase:', err);
+  }
+  return local;
+}
+
+export async function saveEBooks(ebooks: EBook[]) {
   localStorage.setItem(STORAGE_KEYS.EBOOKS, JSON.stringify(ebooks));
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    for (const eb of ebooks) {
+      try {
+        await supabase.from('ebooks').upsert({
+          id: eb.id,
+          title: eb.title,
+          subtitle: eb.subtitle,
+          cover_image: eb.coverImage,
+          pdf_url: eb.pdfUrl,
+          pdf_path: eb.pdfPath || '',
+          description: eb.description,
+          cosmofeed_url: eb.cosmofeedUrl,
+          active: eb.active,
+          enable_sample: eb.enableSample ?? true,
+          sample_start_page: eb.sampleStartPage ?? 1,
+          sample_end_page: eb.sampleEndPage ?? 3,
+          created_at: eb.createdAt
+        }, { onConflict: 'id' });
+      } catch (err) {
+        console.error('Supabase ebook upsert error:', err);
+      }
+    }
+  }
 }
 
 export function getStoredCustomers(): Customer[] {
@@ -191,7 +267,45 @@ export function getStoredCustomers(): Customer[] {
       customers = DEFAULT_CUSTOMERS;
     }
   }
-  return customers.map(c => c.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? { ...c, name: 'Adinath' } : c);
+  return customers.map(c => isAdminEmail(c.email) ? { ...c, name: 'Adinath' } : c);
+}
+
+export async function fetchAndSyncCustomers(): Promise<Customer[]> {
+  const local = getStoredCustomers();
+  const supabase = getSupabaseClient();
+  if (!supabase) return local;
+
+  try {
+    const { data, error } = await supabase.from('customers').select('*');
+    if (!error && data && data.length > 0) {
+      const remoteCustomers: Customer[] = data.map((item: any) => ({
+        id: item.id,
+        email: item.email,
+        name: item.name,
+        activeSessionId: item.active_session_id || item.activeSessionId,
+        notes: item.notes,
+        createdAt: item.created_at || item.createdAt || new Date().toISOString()
+      }));
+      // Ensure admins are present
+      for (const adm of ADMIN_EMAILS) {
+        if (!remoteCustomers.some(c => c.email.toLowerCase() === adm.toLowerCase())) {
+          remoteCustomers.unshift({
+            id: 'cust-admin-' + Math.random().toString(36).substring(2),
+            email: adm,
+            name: 'Adinath',
+            activeSessionId: 'session-admin',
+            notes: 'Platform Administrator',
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
+      localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(remoteCustomers));
+      return remoteCustomers;
+    }
+  } catch (err) {
+    console.error('Error fetching customers from Supabase:', err);
+  }
+  return local;
 }
 
 export function saveCustomers(customers: Customer[]) {
@@ -275,7 +389,7 @@ export function getCurrentUser(): Customer | null {
   if (!data) return null;
   try {
     const user: Customer = JSON.parse(data);
-    if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    if (isAdminEmail(user.email)) {
       user.name = 'Adinath';
     }
     return user;

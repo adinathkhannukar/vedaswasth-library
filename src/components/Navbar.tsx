@@ -1,6 +1,6 @@
 import React from 'react';
 import { Customer, AppView } from '../types';
-import { WHATSAPP_NUMBER, ADMIN_EMAIL } from '../lib/storage';
+import { WHATSAPP_NUMBER, isAdminEmail } from '../lib/storage';
 import { BookOpen, ShieldCheck, MessageCircle, LogOut, Settings, Home, ArrowLeft } from 'lucide-react';
 
 interface NavbarProps {
@@ -16,7 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onViewChange,
   onLogout
 }) => {
-  const isAdmin = currentUser?.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const isAdmin = isAdminEmail(currentUser?.email || '');
 
   const handleWhatsApp = () => {
     const message = encodeURIComponent(
@@ -26,52 +26,52 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#fbf9f5]/90 backdrop-blur-md border-b border-[#e5dec9] px-4 py-3 shadow-xs">
-      <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-[#fbf9f5]/95 backdrop-blur-md border-b border-[#e5dec9] w-full max-w-full overflow-hidden px-3 py-2.5 shadow-xs">
+      <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-2">
         <div 
-          className="flex items-center space-x-3 cursor-pointer group"
+          className="flex items-center space-x-2.5 cursor-pointer group min-w-0"
           onClick={() => onViewChange('library')}
         >
-          <div className="w-10 h-10 rounded-full bg-[#064e3b] text-[#f4ecd8] flex items-center justify-center font-serif text-lg font-bold shadow-sm group-hover:scale-105 transition-transform">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#064e3b] text-[#f4ecd8] flex items-center justify-center font-serif text-base sm:text-lg font-bold shadow-sm group-hover:scale-105 transition-transform shrink-0">
             VS
           </div>
-          <div>
-            <h1 className="font-serif text-lg font-bold text-[#064e3b] tracking-wide">
+          <div className="min-w-0">
+            <h1 className="font-serif text-base sm:text-lg font-bold text-[#064e3b] tracking-wide truncate">
               Veda Swasth Library
             </h1>
-            <p className="text-xs text-[#5c6e65] hidden sm:block">Private Wellness Sanctuary</p>
+            <p className="text-[11px] text-[#5c6e65] hidden sm:block">Private Wellness Sanctuary</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
           {currentUser && (
             <>
               {currentView === 'reader' && (
                 <button
                   onClick={() => onViewChange('library')}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-[#e8e2d0] text-[#064e3b] text-xs sm:text-sm font-medium hover:bg-[#ded6c0] transition-colors"
+                  className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-[#e8e2d0] text-[#064e3b] text-xs font-medium hover:bg-[#ded6c0] transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Back to Library</span>
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Library</span>
                 </button>
               )}
 
               {currentView !== 'admin' && isAdmin && (
                 <button
                   onClick={() => onViewChange('admin')}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-[#064e3b] text-[#f4ecd8] text-xs sm:text-sm font-medium hover:bg-[#043d2e] transition-colors shadow-xs"
+                  className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-[#064e3b] text-[#f4ecd8] text-xs font-medium hover:bg-[#043d2e] transition-colors shadow-xs"
                 >
-                  <Settings className="w-4 h-4" />
-                  <span>Admin Panel</span>
+                  <Settings className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Admin</span>
                 </button>
               )}
 
               {currentView === 'admin' && (
                 <button
                   onClick={() => onViewChange('library')}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-[#064e3b] text-[#f4ecd8] text-xs sm:text-sm font-medium hover:bg-[#043d2e] transition-colors shadow-xs"
+                  className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-[#064e3b] text-[#f4ecd8] text-xs font-medium hover:bg-[#043d2e] transition-colors shadow-xs"
                 >
-                  <Home className="w-4 h-4" />
+                  <Home className="w-3.5 h-3.5" />
                   <span>Library</span>
                 </button>
               )}
@@ -79,16 +79,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={handleWhatsApp}
                 title="Need Help? Chat on WhatsApp"
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#25d366]/15 text-[#075e54] text-xs sm:text-sm font-medium hover:bg-[#25d366]/25 transition-colors border border-[#25d366]/30"
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-[#25d366]/15 text-[#075e54] text-xs font-medium hover:bg-[#25d366]/25 transition-colors border border-[#25d366]/30"
               >
-                <MessageCircle className="w-4 h-4 text-[#25d366]" />
-                <span className="hidden md:inline">Need Help?</span>
+                <MessageCircle className="w-3.5 h-3.5 text-[#25d366]" />
+                <span className="hidden sm:inline">Help</span>
               </button>
 
               <button
                 onClick={onLogout}
                 title="Sign Out"
-                className="p-2 rounded-lg text-[#6b7280] hover:text-[#991b1b] hover:bg-[#fee2e2]/50 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg text-[#6b7280] hover:text-[#991b1b] hover:bg-[#fee2e2]/50 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </button>
