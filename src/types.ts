@@ -4,6 +4,7 @@ export interface EBook {
   subtitle: string;
   coverImage: string;
   pdfUrl: string;
+  pdfPath?: string;
   description: string;
   cosmofeedUrl: string;
   active: boolean;

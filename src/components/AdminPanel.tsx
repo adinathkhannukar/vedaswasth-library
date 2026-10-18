@@ -28,7 +28,8 @@ export const AdminPanel: React.FC = () => {
     title: '',
     subtitle: '',
     coverImage: '',
-    pdfUrl: '',
+    pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    pdfPath: '',
     description: '',
     cosmofeedUrl: '',
     active: true,
@@ -143,6 +144,7 @@ export const AdminPanel: React.FC = () => {
       subtitle: '',
       coverImage: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&h=800&fit=crop',
       pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      pdfPath: 'New Mudra E-Book Guide.pdf',
       description: '',
       cosmofeedUrl: 'https://cosmofeed.com/vig/wellness-ebook',
       active: true,
@@ -160,6 +162,7 @@ export const AdminPanel: React.FC = () => {
       subtitle: ebook.subtitle,
       coverImage: ebook.coverImage,
       pdfUrl: ebook.pdfUrl,
+      pdfPath: ebook.pdfPath || '',
       description: ebook.description,
       cosmofeedUrl: ebook.cosmofeedUrl,
       active: ebook.active,
@@ -180,19 +183,12 @@ export const AdminPanel: React.FC = () => {
       alert('Please upload a cover image from your device.');
       return;
     }
-    if (!ebookForm.pdfUrl) {
-      alert('Please upload a PDF document from your device.');
+    if (!ebookForm.pdfPath) {
+      alert('Please enter the Supabase Storage file name / path.');
       return;
     }
 
     const ebookId = editingEbook ? editingEbook.id : 'eb_' + Date.now();
-
-    let finalPdfUrl = ebookForm.pdfUrl;
-    if (finalPdfUrl.startsWith('data:')) {
-      const pdfKey = 'idb_pdf_' + ebookId;
-      await saveFileToIDB(pdfKey, finalPdfUrl);
-      finalPdfUrl = 'idb://' + pdfKey;
-    }
 
     let finalCoverUrl = ebookForm.coverImage;
     if (finalCoverUrl.startsWith('data:')) {
@@ -203,7 +199,7 @@ export const AdminPanel: React.FC = () => {
 
     const savedForm = {
       ...ebookForm,
-      pdfUrl: finalPdfUrl,
+      pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       coverImage: finalCoverUrl
     };
 
@@ -846,28 +842,19 @@ export const AdminPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">PDF Document (Upload from Device) *</label>
-                <div className="space-y-1">
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          setEbookForm(prev => ({ ...prev, pdfUrl: ev.target?.result as string }));
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-xs text-[#526052] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#064e3b] file:text-[#f4ecd8] hover:file:bg-[#043d2e] cursor-pointer"
-                  />
-                  <p className="text-[11px] text-[#738479]">
-                    {ebookForm.pdfUrl && ebookForm.pdfUrl.startsWith('data:') ? '✓ PDF loaded successfully from device' : 'Upload PDF file from your device.'}
-                  </p>
-                </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Supabase Storage File Name / Path *</label>
+                <input
+                  type="text"
+                  required
+                  value={ebookForm.pdfPath}
+                  onChange={(e) => setEbookForm({ ...ebookForm, pdfPath: e.target.value })}
+                  placeholder="e.g. New Mudra E-Book Guide.pdf"
+                  className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#047857]"
+                />
+                <p className="text-[11px] text-[#738479]">
+                  Enter the exact file name uploaded in your Supabase 'secure-ebooks' bucket.
+                </p>
               </div>
 
               <div className="space-y-1">

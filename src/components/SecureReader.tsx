@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { EBook, Customer } from '../types';
 import { getStoredProgress, saveProgress, getStoredBookmarks, saveBookmarks } from '../lib/storage';
 import { getFileFromIDB } from '../lib/idb';
+import { getSupabaseClient } from '../lib/supabaseConfig';
 import * as pdfjsLib from 'pdfjs-dist';
 import { 
   ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Bookmark as BookmarkIcon, 
@@ -88,7 +89,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     };
   }, []);
 
-  // Load PDF Document
+  // Load PDF Document from Supabase Storage or fallback
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -97,6 +98,29 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     const loadPdf = async () => {
       try {
         let rawPdfUrl = ebook.pdfUrl;
+        const supabase = getSupabaseClient();
+
+        if (supabase && ebook.pdfPath) {
+          try {
+            const { data, error: signedErr } = await supabase.storage
+              .from('secure-ebooks')
+              .createSignedUrl(ebook.pdfPath, 3600);
+
+            if (data?.signedUrl) {
+              rawPdfUrl = data.signedUrl;
+            } else {
+              const { data: pubData } = supabase.storage
+                .from('secure-ebooks')
+                .getPublicUrl(ebook.pdfPath);
+              if (pubData?.publicUrl) {
+                rawPdfUrl = pubData.publicUrl;
+              }
+            }
+          } catch (storageErr) {
+            console.warn('Supabase storage signed URL fetch warning:', storageErr);
+          }
+        }
+
         if (rawPdfUrl && rawPdfUrl.startsWith('idb://')) {
           const idbKey = rawPdfUrl.replace('idb://', '');
           const cached = await getFileFromIDB(idbKey);
@@ -147,7 +171,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [ebook.pdfUrl]);
+  }, [ebook.pdfUrl, ebook.pdfPath]);
 
   // Render Page on Canvas
   useEffect(() => {
@@ -355,7 +379,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
         {loading ? (
           <div className="flex flex-col items-center justify-center space-y-3 py-20">
             <Loader2 className="w-8 h-8 animate-spin text-[#047857]" />
-            <p className="text-xs font-medium text-[#526052]">Loading secure document...</p>
+            <p className="text-xs font-medium text-[#526052]">Loading secure document from Supabase Storage...</p>
           </div>
         ) : error ? (
           <div className="bg-[#fee2e2] border border-[#fca5a5] text-[#991b1b] p-6 rounded-2xl max-w-md text-center space-y-2">
