@@ -20,7 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleWhatsApp = () => {
     const message = encodeURIComponent(
-      `Namaste! I need assistance with Veda Swasth Library (User: ${currentUser?.email || 'Guest'})`
+      `Namaste, I have purchased the eBook. Please grant me access to my library using my email address: ${currentUser?.email || 'N/A'}. Thank you!`
     );
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
   };

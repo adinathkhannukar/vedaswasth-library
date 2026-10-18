@@ -1,7 +1,7 @@
 import { EBook, Customer, AccessGrant, ReadingProgress, Bookmark } from '../types';
 
 export const ADMIN_EMAIL = 'adinathkhannukar7084@gmail.com';
-export const WHATSAPP_NUMBER = '919876543210'; // Default admin WhatsApp number
+export const WHATSAPP_NUMBER = '918310828152'; // Admin WhatsApp number
 
 const STORAGE_KEYS = {
   EBOOKS: 'veda_swasth_ebooks',
