@@ -99,15 +99,26 @@ export const AdminPanel: React.FC = () => {
     setShowPromoModal(true);
   };
 
-  const handleSavePromo = (e: React.FormEvent) => {
+  const handleSavePromo = async (e: React.FormEvent) => {
     e.preventDefault();
+    const promoId = editingPromo ? editingPromo.id : 'promo_' + Date.now();
+
+    let finalImageUrl = promoForm.imageUrl;
+    if (finalImageUrl.startsWith('data:')) {
+      const imgKey = 'idb_promo_' + promoId;
+      await saveFileToIDB(imgKey, finalImageUrl);
+      finalImageUrl = 'idb://' + imgKey;
+    }
+
+    const payload = { ...promoForm, imageUrl: finalImageUrl };
+
     let updated: PromoBanner[];
     if (editingPromo) {
-      updated = promos.map(p => p.id === editingPromo.id ? { ...p, ...promoForm } : p);
+      updated = promos.map(p => p.id === editingPromo.id ? { ...p, ...payload } : p);
     } else {
       const newPromo: PromoBanner = {
-        id: 'promo_' + Date.now(),
-        ...promoForm,
+        id: promoId,
+        ...payload,
         createdAt: new Date().toISOString()
       };
       updated = [newPromo, ...promos];
@@ -1062,16 +1073,33 @@ export const AdminPanel: React.FC = () => {
                 ></textarea>
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Poster Image URL *</label>
-                <input
-                  type="url"
-                  required
-                  value={promoForm.imageUrl}
-                  onChange={(e) => setPromoForm({ ...promoForm, imageUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#047857]"
-                />
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Poster Image (Upload from Device) *</label>
+                <div className="flex items-center space-x-4">
+                  {promoForm.imageUrl && (
+                    <img 
+                      src={promoForm.imageUrl} 
+                      alt="Preview" 
+                      className="w-24 h-12 object-cover rounded-lg border border-[#d6ccb2] shrink-0" 
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                    />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          setPromoForm(prev => ({ ...prev, imageUrl: ev.target?.result as string }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full text-xs text-[#526052] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#064e3b] file:text-[#f4ecd8] hover:file:bg-[#043d2e] cursor-pointer"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1">

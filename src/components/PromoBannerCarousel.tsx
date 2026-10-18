@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PromoBanner } from '../types';
 import { getStoredPromos, getPromoEnabled } from '../lib/storage';
+import { getFileFromIDB } from '../lib/idb';
 import { ChevronLeft, ChevronRight, X, ExternalLink, Sparkles } from 'lucide-react';
 
 export const PromoBannerCarousel: React.FC = () => {
@@ -8,6 +9,7 @@ export const PromoBannerCarousel: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string>('');
 
   useEffect(() => {
     const enabled = getPromoEnabled();
@@ -19,6 +21,22 @@ export const PromoBannerCarousel: React.FC = () => {
     setPromos(all);
   }, []);
 
+  const currentPromo = promos[currentIndex];
+
+  useEffect(() => {
+    let active = true;
+    const url = currentPromo?.imageUrl;
+    if (url && url.startsWith('idb://')) {
+      const key = url.replace('idb://', '');
+      getFileFromIDB(key).then(res => {
+        if (active && res) setResolvedImageUrl(res);
+      });
+    } else if (url) {
+      setResolvedImageUrl(url);
+    }
+    return () => { active = false; };
+  }, [currentPromo]);
+
   // Auto-scroll every 5 seconds
   useEffect(() => {
     if (!isVisible || promos.length <= 1 || isPaused) return;
@@ -29,8 +47,6 @@ export const PromoBannerCarousel: React.FC = () => {
   }, [isVisible, promos.length, isPaused]);
 
   if (!isVisible || promos.length === 0) return null;
-
-  const currentPromo = promos[currentIndex];
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -71,10 +87,10 @@ export const PromoBannerCarousel: React.FC = () => {
         className="cursor-pointer flex flex-col md:flex-row items-center relative min-h-[220px]"
       >
         {/* Background Image / Poster */}
-        {currentPromo.imageUrl && (
+        {(resolvedImageUrl || currentPromo.imageUrl) && (
           <div className="absolute inset-0 opacity-25 md:opacity-35 mix-blend-overlay overflow-hidden">
             <img 
-              src={currentPromo.imageUrl} 
+              src={resolvedImageUrl || currentPromo.imageUrl} 
               alt={currentPromo.title} 
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
