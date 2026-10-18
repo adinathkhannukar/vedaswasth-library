@@ -320,6 +320,30 @@ export const AdminPanel: React.FC = () => {
     alert('All eBook access revoked for this customer.');
   };
 
+  const handleDeleteCustomer = (customerId: string, customerEmail: string) => {
+    if (customerEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      alert('Cannot delete the main admin account.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete customer ${customerEmail}? This will remove all their access grants, session data, and records.`)) {
+      return;
+    }
+
+    const updatedCustomers = customers.filter(c => c.id !== customerId);
+    setCustomers(updatedCustomers);
+    saveCustomers(updatedCustomers);
+
+    const updatedGrants = grants.filter(g => g.customerId !== customerId);
+    setGrants(updatedGrants);
+    saveGrants(updatedGrants);
+
+    const updatedProgress = getStoredProgress().filter(p => p.customerId !== customerId);
+    saveProgress(updatedProgress);
+
+    const updatedBookmarks = getStoredBookmarks().filter(b => b.customerId !== customerId);
+    saveBookmarks(updatedBookmarks);
+  };
+
   // --- Supabase Config Save ---
   const handleSaveSupabase = (e: React.FormEvent) => {
     e.preventDefault();
@@ -647,7 +671,7 @@ export const AdminPanel: React.FC = () => {
                               <span className="text-xs text-gray-500 italic">No active session</span>
                             )}
                           </td>
-                          <td className="p-4 text-right space-x-2">
+                          <td className="p-4 text-right space-x-2 whitespace-nowrap">
                             <button
                               onClick={() => handleResetDevice(cust.id)}
                               className="px-3 py-1.5 bg-[#e5dec9] text-[#064e3b] hover:bg-[#d8ceb4] rounded-lg text-xs font-medium transition-colors"
@@ -661,6 +685,13 @@ export const AdminPanel: React.FC = () => {
                               title="Revoke all eBook access"
                             >
                               Revoke Access
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCustomer(cust.id, cust.email)}
+                              className="px-3 py-1.5 bg-[#7f1d1d] text-white hover:bg-[#991b1b] rounded-lg text-xs font-medium transition-colors shadow-xs"
+                              title="Delete customer permanently"
+                            >
+                              Delete
                             </button>
                           </td>
                         </tr>
