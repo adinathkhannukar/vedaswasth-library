@@ -12,6 +12,7 @@ export default function App() {
   const [currentUser, setCurrentUserState] = useState<Customer | null>(() => getCurrentUser());
   const [currentView, setCurrentView] = useState<AppView>('library');
   const [selectedEbook, setSelectedEbook] = useState<EBook | null>(null);
+  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
 
   // Single device session check on mount / interval
   useEffect(() => {
@@ -44,10 +45,18 @@ export default function App() {
     setCurrentUserState(null);
     setCurrentView('library');
     setSelectedEbook(null);
+    setIsPreviewMode(false);
   };
 
   const handleOpenReader = (ebook: EBook) => {
     setSelectedEbook(ebook);
+    setIsPreviewMode(false);
+    setCurrentView('reader');
+  };
+
+  const handleOpenPreview = (ebook: EBook) => {
+    setSelectedEbook(ebook);
+    setIsPreviewMode(true);
     setCurrentView('reader');
   };
 
@@ -61,7 +70,10 @@ export default function App() {
         currentUser={currentUser}
         currentView={currentView}
         onViewChange={(view) => {
-          if (view !== 'reader') setSelectedEbook(null);
+          if (view !== 'reader') {
+            setSelectedEbook(null);
+            setIsPreviewMode(false);
+          }
           setCurrentView(view);
         }}
         onLogout={handleLogout}
@@ -75,7 +87,11 @@ export default function App() {
           <SecureReader
             ebook={selectedEbook}
             currentUser={currentUser}
-            onBack={() => setCurrentView('library')}
+            onBack={() => {
+              setIsPreviewMode(false);
+              setCurrentView('library');
+            }}
+            isPreview={isPreviewMode}
           />
         ) : currentView === 'admin' ? (
           <AdminPanel />
@@ -83,6 +99,7 @@ export default function App() {
           <CustomerLibrary
             currentUser={currentUser}
             onOpenReader={handleOpenReader}
+            onOpenPreview={handleOpenPreview}
           />
         )}
       </main>

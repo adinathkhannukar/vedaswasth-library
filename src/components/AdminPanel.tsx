@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
-import { Customer, EBook, AccessGrant } from '../types';
+import { Customer, EBook, AccessGrant, PromoBanner } from '../types';
 import { 
   getStoredEBooks, saveEBooks, getStoredCustomers, saveCustomers, 
   getStoredGrants, saveGrants, getStoredProgress, saveProgress, 
-  getStoredBookmarks, saveBookmarks, ADMIN_EMAIL 
+  getStoredBookmarks, saveBookmarks, ADMIN_EMAIL,
+  getStoredPromos, savePromos, getPromoEnabled, setPromoEnabled
 } from '../lib/storage';
 import { getStoredSupabaseConfig, saveSupabaseConfig } from '../lib/supabaseConfig';
 import { saveFileToIDB, deleteFileFromIDB } from '../lib/idb';
 import { EBookCover } from './EBookCover';
 import { 
   BookOpen, Users, KeyRound, BarChart3, Plus, Trash2, Edit2, 
-  CheckCircle, ShieldAlert, Smartphone, Database, ExternalLink, Save, RefreshCw, Search 
+  CheckCircle, ShieldAlert, Smartphone, Database, ExternalLink, Save, RefreshCw, Search, Megaphone 
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'ebooks' | 'grants' | 'customers' | 'stats' | 'supabase'>('ebooks');
+  const [activeTab, setActiveTab] = useState<'ebooks' | 'grants' | 'customers' | 'stats' | 'supabase' | 'promos'>('ebooks');
 
   const [ebooks, setEbooks] = useState<EBook[]>(getStoredEBooks());
   const [customers, setCustomers] = useState<Customer[]>(getStoredCustomers());
@@ -30,7 +31,9 @@ export const AdminPanel: React.FC = () => {
     pdfUrl: '',
     description: '',
     cosmofeedUrl: '',
-    active: true
+    active: true,
+    enableSample: true,
+    samplePages: 3
   });
 
   // Grant Access form state
@@ -47,6 +50,79 @@ export const AdminPanel: React.FC = () => {
   const [supabaseCfg, setSupabaseCfg] = useState(getStoredSupabaseConfig());
   const [supabaseSaved, setSupabaseSaved] = useState(false);
 
+  // Promotions state
+  const [promos, setPromos] = useState<PromoBanner[]>(getStoredPromos());
+  const [promoEnabled, setPromoEnabledState] = useState<boolean>(getPromoEnabled());
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [editingPromo, setEditingPromo] = useState<PromoBanner | null>(null);
+  const [promoForm, setPromoForm] = useState({
+    title: '',
+    subtitle: '',
+    imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&h=500&fit=crop',
+    linkUrl: '',
+    buttonText: 'Claim Offer',
+    badgeText: 'Special Offer',
+    active: true
+  });
+
+  const handleTogglePromoSystem = (checked: boolean) => {
+    setPromoEnabledState(checked);
+    setPromoEnabled(checked);
+  };
+
+  const handleOpenAddPromo = () => {
+    setEditingPromo(null);
+    setPromoForm({
+      title: '',
+      subtitle: '',
+      imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&h=500&fit=crop',
+      linkUrl: '',
+      buttonText: 'Claim Offer',
+      badgeText: 'Special Offer',
+      active: true
+    });
+    setShowPromoModal(true);
+  };
+
+  const handleOpenEditPromo = (promo: PromoBanner) => {
+    setEditingPromo(promo);
+    setPromoForm({
+      title: promo.title,
+      subtitle: promo.subtitle,
+      imageUrl: promo.imageUrl,
+      linkUrl: promo.linkUrl,
+      buttonText: promo.buttonText,
+      badgeText: promo.badgeText || '',
+      active: promo.active
+    });
+    setShowPromoModal(true);
+  };
+
+  const handleSavePromo = (e: React.FormEvent) => {
+    e.preventDefault();
+    let updated: PromoBanner[];
+    if (editingPromo) {
+      updated = promos.map(p => p.id === editingPromo.id ? { ...p, ...promoForm } : p);
+    } else {
+      const newPromo: PromoBanner = {
+        id: 'promo_' + Date.now(),
+        ...promoForm,
+        createdAt: new Date().toISOString()
+      };
+      updated = [newPromo, ...promos];
+    }
+    setPromos(updated);
+    savePromos(updated);
+    setShowPromoModal(false);
+    setEditingPromo(null);
+  };
+
+  const handleDeletePromo = (id: string) => {
+    const updated = promos.filter(p => p.id !== id);
+    setPromos(updated);
+    savePromos(updated);
+  };
+
   // --- EBook Actions ---
   const handleOpenAddEbook = () => {
     setEditingEbook(null);
@@ -57,7 +133,9 @@ export const AdminPanel: React.FC = () => {
       pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       description: '',
       cosmofeedUrl: 'https://cosmofeed.com/vig/wellness-ebook',
-      active: true
+      active: true,
+      enableSample: true,
+      samplePages: 3
     });
     setShowEbookModal(true);
   };
@@ -71,7 +149,9 @@ export const AdminPanel: React.FC = () => {
       pdfUrl: ebook.pdfUrl,
       description: ebook.description,
       cosmofeedUrl: ebook.cosmofeedUrl,
-      active: ebook.active
+      active: ebook.active,
+      enableSample: ebook.enableSample ?? true,
+      samplePages: ebook.samplePages ?? 3
     });
     setShowEbookModal(true);
   };
@@ -317,6 +397,16 @@ export const AdminPanel: React.FC = () => {
         >
           <Database className="w-4 h-4" />
           <span>Supabase Config</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('promos')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            activeTab === 'promos' ? 'bg-[#064e3b] text-[#f4ecd8] shadow-xs' : 'text-[#526052] hover:bg-[#ede7d3]'
+          }`}
+        >
+          <Megaphone className="w-4 h-4" />
+          <span>Promotions / Ads</span>
         </button>
       </div>
 
@@ -788,6 +878,32 @@ export const AdminPanel: React.FC = () => {
                 ></textarea>
               </div>
 
+              <div className="bg-[#ede7d3] p-4 rounded-2xl space-y-3">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="enableSampleToggle"
+                    checked={ebookForm.enableSample}
+                    onChange={(e) => setEbookForm({ ...ebookForm, enableSample: e.target.checked })}
+                    className="w-4 h-4 text-[#047857] rounded border-gray-300 focus:ring-[#047857]"
+                  />
+                  <label htmlFor="enableSampleToggle" className="text-sm font-semibold text-[#1c2d25]">Enable Free Sample Preview</label>
+                </div>
+                {ebookForm.enableSample && (
+                  <div className="space-y-1 pl-7">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Sample Pages Count</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={ebookForm.samplePages}
+                      onChange={(e) => setEbookForm({ ...ebookForm, samplePages: parseInt(e.target.value) || 3 })}
+                      className="w-32 px-3 py-2 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center space-x-3 pt-2">
                 <input
                   type="checkbox"
@@ -812,6 +928,198 @@ export const AdminPanel: React.FC = () => {
                   className="w-1/2 py-3 bg-[#064e3b] text-[#f4ecd8] rounded-xl font-semibold hover:bg-[#043d2e] transition-colors shadow-md"
                 >
                   Save eBook
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: PROMOTIONS / ADS */}
+      {activeTab === 'promos' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl p-6 shadow-sm">
+            <div className="space-y-1">
+              <h3 className="font-serif text-xl font-bold text-[#064e3b]">Promotional Banner System</h3>
+              <p className="text-xs text-[#526052]">
+                Manage promotional hero banners shown to customers on their library dashboard.
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-[#d6ccb2] shadow-xs">
+                <input
+                  type="checkbox"
+                  checked={promoEnabled}
+                  onChange={(e) => handleTogglePromoSystem(e.target.checked)}
+                  className="w-4 h-4 text-[#047857] rounded border-gray-300 focus:ring-[#047857]"
+                />
+                <span className="text-sm font-semibold text-[#064e3b]">Banner System {promoEnabled ? 'ON' : 'OFF'}</span>
+              </label>
+              <button
+                onClick={handleOpenAddPromo}
+                className="flex items-center space-x-2 bg-[#064e3b] text-[#f4ecd8] px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#043d2e] transition-colors shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Promo Banner</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {promos.map((promo) => (
+              <div key={promo.id} className="bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="relative aspect-[21/9] rounded-xl overflow-hidden bg-[#e5dec9]">
+                    <img src={promo.imageUrl} alt={promo.title} className="w-full h-full object-cover" />
+                    {promo.badgeText && (
+                      <span className="absolute top-2.5 left-2.5 bg-[#fbbf24] text-[#064e3b] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs">
+                        {promo.badgeText}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`w-2 h-2 rounded-full ${promo.active ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#617067]">
+                      {promo.active ? 'Active' : 'Hidden'}
+                    </span>
+                  </div>
+                  <h4 className="font-serif font-bold text-[#064e3b] text-lg">{promo.title}</h4>
+                  <p className="text-xs text-[#526052] line-clamp-2">{promo.subtitle}</p>
+                  <p className="text-[11px] font-mono text-[#047857] truncate">Link: {promo.linkUrl}</p>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-[#e2d8be]">
+                  <span className="text-xs font-semibold px-3 py-1 bg-[#ede7d3] text-[#064e3b] rounded-lg">
+                    {promo.buttonText}
+                  </span>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleOpenEditPromo(promo)}
+                      className="p-2 rounded-lg bg-[#e5dec9] text-[#064e3b] hover:bg-[#d8ceb4] transition-colors"
+                      title="Edit Promo"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePromo(promo.id)}
+                      className="p-2 rounded-lg bg-[#fee2e2] text-[#991b1b] hover:bg-[#fecaca] transition-colors"
+                      title="Delete Promo"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PROMO ADD/EDIT MODAL */}
+      {showPromoModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#fbf9f5] border border-[#d4cbb3] rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto space-y-6">
+            <h3 className="font-serif text-2xl font-bold text-[#064e3b]">
+              {editingPromo ? 'Edit Promotional Banner' : 'Add New Promotional Banner'}
+            </h3>
+
+            <form onSubmit={handleSavePromo} className="space-y-4">
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Headline / Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={promoForm.title}
+                  onChange={(e) => setPromoForm({ ...promoForm, title: e.target.value })}
+                  placeholder="Complete Masterclass Bundle"
+                  className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Subheading *</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={promoForm.subtitle}
+                  onChange={(e) => setPromoForm({ ...promoForm, subtitle: e.target.value })}
+                  placeholder="Unlock all 4 masterclasses at 50% discount..."
+                  className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
+                ></textarea>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Poster Image URL *</label>
+                <input
+                  type="url"
+                  required
+                  value={promoForm.imageUrl}
+                  onChange={(e) => setPromoForm({ ...promoForm, imageUrl: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#047857]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Target Destination URL (Cosmofeed/WhatsApp) *</label>
+                <input
+                  type="url"
+                  required
+                  value={promoForm.linkUrl}
+                  onChange={(e) => setPromoForm({ ...promoForm, linkUrl: e.target.value })}
+                  placeholder="https://cosmofeed.com/..."
+                  className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#047857]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Button Text</label>
+                  <input
+                    type="text"
+                    value={promoForm.buttonText}
+                    onChange={(e) => setPromoForm({ ...promoForm, buttonText: e.target.value })}
+                    placeholder="Claim Offer"
+                    className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Badge Text</label>
+                  <input
+                    type="text"
+                    value={promoForm.badgeText}
+                    onChange={(e) => setPromoForm({ ...promoForm, badgeText: e.target.value })}
+                    placeholder="Special Offer"
+                    className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <input
+                  type="checkbox"
+                  id="promoActiveToggle"
+                  checked={promoForm.active}
+                  onChange={(e) => setPromoForm({ ...promoForm, active: e.target.checked })}
+                  className="w-4 h-4 text-[#047857] rounded border-gray-300 focus:ring-[#047857]"
+                />
+                <label htmlFor="promoActiveToggle" className="text-sm font-medium text-[#1c2d25]">Active (Show on Banner)</label>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPromoModal(false)}
+                  className="w-1/2 py-3 bg-[#e5dec9] text-[#064e3b] rounded-xl font-medium hover:bg-[#d8ceb4] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-3 bg-[#064e3b] text-[#f4ecd8] rounded-xl font-semibold hover:bg-[#043d2e] transition-colors shadow-md"
+                >
+                  Save Promotion
                 </button>
               </div>
             </form>

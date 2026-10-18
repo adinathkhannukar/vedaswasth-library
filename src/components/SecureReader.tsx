@@ -5,7 +5,7 @@ import { getFileFromIDB } from '../lib/idb';
 import * as pdfjsLib from 'pdfjs-dist';
 import { 
   ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Bookmark as BookmarkIcon, 
-  Sun, Moon, EyeOff, ShieldCheck, ArrowLeft, Loader2, Sparkles 
+  Sun, Moon, EyeOff, ShieldCheck, ArrowLeft, Loader2, Sparkles, ExternalLink 
 } from 'lucide-react';
 
 // Configure PDF.js worker with stable cdnjs version matching 3.11.174
@@ -13,14 +13,16 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 interface SecureReaderProps {
   ebook: EBook;
-  currentUser: Customer;
+  currentUser?: Customer | null;
   onBack: () => void;
+  isPreview?: boolean;
 }
 
 export const SecureReader: React.FC<SecureReaderProps> = ({
   ebook,
   currentUser,
-  onBack
+  onBack,
+  isPreview = false
 }) => {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [pageNum, setPageNum] = useState<number>(1);
@@ -36,70 +38,44 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const sampleLimit = isPreview ? Math.min(ebook.samplePages || 3, numPages || 3) : numPages;
+
   // Load saved reading progress & bookmarks
   useEffect(() => {
+    if (!currentUser || isPreview) return;
     const allProgress = getStoredProgress();
-    const existing = allProgress.find(p => p.customerId === currentUser.id && p.ebookId === ebook.id);
-    if (existing && existing.lastPage > 0) {
-      setPageNum(existing.lastPage);
+    const prog = allProgress.find(p => p.customerId === currentUser.id && p.ebookId === ebook.id);
+    if (prog && prog.lastPage > 1) {
+      setPageNum(prog.lastPage);
     }
 
     const allBookmarks = getStoredBookmarks();
-    const ebookBookmarks = allBookmarks
+    const userBookmarks = allBookmarks
       .filter(b => b.customerId === currentUser.id && b.ebookId === ebook.id)
       .map(b => b.pageNumber);
-    setBookmarks(ebookBookmarks);
-  }, [currentUser.id, ebook.id]);
+    setBookmarks(userBookmarks);
+  }, [currentUser, ebook.id, isPreview]);
 
-  // Focus and visibility loss detection (Anti-leak blur)
+  // Anti-blur & anti-tamper security listener
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      setIsFocused(!document.hidden);
-    };
     const handleBlur = () => setIsFocused(false);
     const handleFocus = () => setIsFocused(true);
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
-
-  // Prevent keyboard shortcuts (Ctrl+S, Ctrl+P, Ctrl+C) and right click
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'p' || e.key === 'c' || e.key === 'u')) {
-        e.preventDefault();
-        alert('Action restricted for secure copyright protection.');
-      }
-    };
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('contextmenu', handleContextMenu);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, []);
-
-  // Moving watermark timer
-  useEffect(() => {
-    const timer = setInterval(() => {
+    const interval = setInterval(() => {
       setWatermarkPos({
-        x: Math.floor(Math.random() * 60) + 10,
+        x: Math.floor(Math.random() * 60) + 15,
         y: Math.floor(Math.random() * 70) + 15
       });
-    }, 7000);
-    return () => clearInterval(timer);
+    }, 8000);
+
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
   }, []);
 
   // Load PDF Document
@@ -108,7 +84,6 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     setLoading(true);
     setError(null);
 
-    // Using CORS proxy or direct PDF load
     const loadPdf = async () => {
       try {
         let rawPdfUrl = ebook.pdfUrl;
@@ -143,7 +118,6 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
       } catch (err) {
         console.error('Error loading PDF:', err);
         if (!isMounted) return;
-        // If loading fails, fallback to a standard reliable dummy PDF URL
         try {
           const fallbackTask = pdfjsLib.getDocument({ url: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' });
           const doc = await fallbackTask.promise;
@@ -186,35 +160,42 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
       };
 
       page.render(renderContext).promise.then(() => {
-        // Save progress automatically
-        const allProgress = getStoredProgress();
-        const filtered = allProgress.filter(p => !(p.customerId === currentUser.id && p.ebookId === ebook.id));
-        filtered.push({
-          id: 'prog_' + Date.now(),
-          customerId: currentUser.id,
-          ebookId: ebook.id,
-          lastPage: pageNum,
-          totalPages: numPages || pdfDoc.numPages,
-          updatedAt: new Date().toISOString()
-        });
-        saveProgress(filtered);
+        if (!isPreview && currentUser) {
+          const allProgress = getStoredProgress();
+          const filtered = allProgress.filter(p => !(p.customerId === currentUser.id && p.ebookId === ebook.id));
+          filtered.push({
+            id: 'prog_' + Date.now(),
+            customerId: currentUser.id,
+            ebookId: ebook.id,
+            lastPage: pageNum,
+            totalPages: numPages || pdfDoc.numPages,
+            updatedAt: new Date().toISOString()
+          });
+          saveProgress(filtered);
+        }
       });
     });
 
     return () => {
       isRenderActive = false;
     };
-  }, [pdfDoc, pageNum, scale, currentUser.id, ebook.id, numPages]);
+  }, [pdfDoc, pageNum, scale, currentUser, ebook.id, numPages, isPreview]);
 
   const handlePrevPage = () => {
     if (pageNum > 1) setPageNum(pageNum - 1);
   };
 
   const handleNextPage = () => {
-    if (pageNum < numPages) setPageNum(pageNum + 1);
+    const maxLimit = isPreview ? Math.min(ebook.samplePages || 3, numPages) : numPages;
+    if (pageNum < maxLimit) {
+      setPageNum(pageNum + 1);
+    } else if (isPreview) {
+      window.open(ebook.cosmofeedUrl, '_blank');
+    }
   };
 
   const toggleBookmark = () => {
+    if (isPreview || !currentUser) return;
     const allBookmarks = getStoredBookmarks();
     const exists = bookmarks.includes(pageNum);
     let updated;
@@ -237,175 +218,191 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     saveBookmarks(updated);
   };
 
-  // Theme styling classes
   const themeClasses = {
     light: 'bg-[#fbf9f5] text-[#1c2d25]',
-    sepia: 'bg-[#f4ecd8] text-[#3d3220]',
+    sepia: 'bg-[#f4ecd8] text-[#3d2c1e]',
     dark: 'bg-[#121815] text-[#e2e8f0]'
   };
 
-  const canvasBgClass = {
-    light: 'bg-white shadow-md',
-    sepia: 'bg-[#faf3e0] shadow-md',
-    dark: 'bg-[#1b2420] shadow-2xl border border-[#2d3a33]'
-  };
+  const canvasBgClass = theme === 'dark' ? 'bg-[#1a231f]' : theme === 'sepia' ? 'bg-[#fbf6eb]' : 'bg-white';
 
   return (
-    <div className={`min-h-screen flex flex-col secure-reader-container ${themeClasses[theme]} transition-colors duration-300 relative`}>
-      {/* Reader Top Navigation Bar */}
-      <div className="sticky top-0 z-30 bg-inherit/90 backdrop-blur-md border-b border-current/10 px-4 py-3 flex items-center justify-between shadow-xs">
+    <div 
+      ref={containerRef}
+      onContextMenu={(e) => e.preventDefault()}
+      className={`min-h-[90vh] flex flex-col ${themeClasses[theme]} relative select-none`}
+    >
+      {/* Top Preview Banner */}
+      {isPreview && (
+        <div className="bg-[#064e3b] text-[#f4ecd8] px-4 py-2.5 text-center text-xs sm:text-sm font-medium flex flex-wrap items-center justify-center space-x-3 shadow-md z-30 shrink-0">
+          <span>Preview Mode: Showing first {ebook.samplePages || 3} pages. Unlock full access to continue reading.</span>
+          <a
+            href={ebook.cosmofeedUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="bg-[#fbbf24] text-[#064e3b] px-3 py-1 rounded-lg font-bold text-xs hover:bg-[#f59e0b] transition-colors shadow-xs inline-flex items-center space-x-1 mt-1 sm:mt-0"
+          >
+            <span>Unlock Full Masterclass</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
+
+      {/* Reader Header / Controls Toolbar */}
+      <div className="bg-[#f5f0e1]/90 dark:bg-[#18221d]/90 backdrop-blur-md border-b border-[#e5dec9] dark:border-[#2a3830] px-4 py-3 flex flex-wrap items-center justify-between gap-3 z-20 shadow-xs">
         <div className="flex items-center space-x-3">
           <button
             onClick={onBack}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-current/10 hover:bg-current/20 transition-colors text-xs sm:text-sm font-medium"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#e5dec9] dark:bg-[#2a3830] text-[#064e3b] dark:text-[#a7f3d0] text-xs font-semibold hover:bg-[#d8ceb4] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Library</span>
+            <span>{isPreview ? 'Back to Library' : 'Back to Sanctuary'}</span>
           </button>
-          <div className="hidden sm:block">
-            <h2 className="font-serif font-bold text-sm sm:text-base line-clamp-1">
-              {ebook.title}
-            </h2>
+          <div>
+            <h3 className="font-serif font-bold text-sm text-[#064e3b] dark:text-[#a7f3d0] line-clamp-1">
+              {ebook.title} {isPreview && <span className="text-xs bg-[#d97706] text-white px-2 py-0.5 rounded ml-2">Free Sample</span>}
+            </h3>
+            <p className="text-[11px] text-[#526052] dark:text-[#9ca3af]">
+              Page {pageNum} of {sampleLimit} {isPreview ? '(Preview)' : ''}
+            </p>
           </div>
         </div>
 
-        {/* Reader Controls */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Zoom Controls */}
-          <div className="flex items-center space-x-1 bg-current/10 rounded-lg p-1">
+        {/* Toolbar Controls */}
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-1 bg-[#ede7d3] dark:bg-[#222d27] p-1 rounded-xl">
+            <button
+              onClick={() => setTheme('light')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${theme === 'light' ? 'bg-white text-[#064e3b] shadow-xs' : 'text-[#526052]'}`}
+            >
+              Light
+            </button>
+            <button
+              onClick={() => setTheme('sepia')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${theme === 'sepia' ? 'bg-[#f4ecd8] text-[#3d2c1e] shadow-xs' : 'text-[#526052]'}`}
+            >
+              Sepia
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${theme === 'dark' ? 'bg-[#064e3b] text-white shadow-xs' : 'text-[#526052]'}`}
+            >
+              Dark
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-1 bg-[#ede7d3] dark:bg-[#222d27] p-1 rounded-xl">
             <button
               onClick={() => setScale(Math.max(0.8, scale - 0.2))}
-              className="p-1.5 hover:bg-current/10 rounded transition-colors"
+              className="p-1.5 rounded-lg text-[#064e3b] dark:text-[#a7f3d0] hover:bg-white/50 transition-colors"
               title="Zoom Out"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
-            <span className="text-xs font-mono px-1">{Math.round(scale * 100)}%</span>
+            <span className="text-xs font-mono font-medium px-1 text-[#526052] dark:text-gray-300">
+              {Math.round(scale * 100)}%
+            </span>
             <button
-              onClick={() => setScale(Math.min(2.2, scale + 0.2))}
-              className="p-1.5 hover:bg-current/10 rounded transition-colors"
+              onClick={() => setScale(Math.min(2.0, scale + 0.2))}
+              className="p-1.5 rounded-lg text-[#064e3b] dark:text-[#a7f3d0] hover:bg-white/50 transition-colors"
               title="Zoom In"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Theme Selector */}
-          <div className="flex items-center space-x-1 bg-current/10 rounded-lg p-1">
+          {!isPreview && (
             <button
-              onClick={() => setTheme('light')}
-              className={`p-1.5 rounded transition-colors ${theme === 'light' ? 'bg-current/20 font-bold' : ''}`}
-              title="Light Mode"
+              onClick={toggleBookmark}
+              className={`p-2 rounded-xl border transition-colors ${bookmarks.includes(pageNum) ? 'bg-[#fbbf24] border-[#d97706] text-[#78350f]' : 'bg-[#ede7d3] dark:bg-[#222d27] border-[#d4cbb3] text-[#526052]'}`}
+              title="Bookmark Page"
             >
-              <Sun className="w-4 h-4" />
+              <BookmarkIcon className="w-4 h-4 fill-current" />
             </button>
-            <button
-              onClick={() => setTheme('sepia')}
-              className={`p-1.5 rounded transition-colors ${theme === 'sepia' ? 'bg-current/20 font-bold' : ''}`}
-              title="Sepia Mode"
-            >
-              <Sparkles className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setTheme('dark')}
-              className={`p-1.5 rounded transition-colors ${theme === 'dark' ? 'bg-current/20 font-bold' : ''}`}
-              title="Dark Mode"
-            >
-              <Moon className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Bookmark Button */}
-          <button
-            onClick={toggleBookmark}
-            className={`p-2 rounded-lg transition-colors flex items-center space-x-1 ${
-              bookmarks.includes(pageNum) ? 'bg-[#d97706] text-white' : 'bg-current/10 hover:bg-current/20'
-            }`}
-            title={bookmarks.includes(pageNum) ? 'Bookmarked' : 'Add Bookmark'}
-          >
-            <BookmarkIcon className="w-4 h-4" />
-          </button>
+          )}
         </div>
       </div>
 
-      {/* Main Content Area / Canvas Container */}
+      {/* Main Canvas Viewport Area */}
       <div 
-        ref={containerRef}
-        className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-auto"
+        className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 overflow-auto relative"
+        onContextMenu={(e) => e.preventDefault()}
       >
-        {/* Anti-Leak Focus Loss Blur Overlay */}
-        {!isFocused && (
-          <div className="absolute inset-0 z-50 backdrop-blur-xl bg-black/50 flex flex-col items-center justify-center text-white space-y-3 p-6 text-center animate-fade-in">
-            <EyeOff className="w-12 h-12 text-[#fbbf24] animate-bounce" />
-            <h3 className="font-serif text-2xl font-bold">Reader Hidden for Privacy</h3>
-            <p className="text-sm text-gray-300 max-w-sm">
-              Content is securely concealed when the app or tab loses focus. Click anywhere to return.
-            </p>
-            <button
-              onClick={() => setIsFocused(true)}
-              className="px-6 py-2.5 bg-[#047857] text-white rounded-xl font-medium shadow-lg hover:bg-[#064e3b]"
-            >
-              Resume Reading
-            </button>
+        {/* Dynamic Watermark overlay for copy/screenshot deterrence */}
+        {currentUser && !isPreview && (
+          <div 
+            style={{ left: `${watermarkPos.x}%`, top: `${watermarkPos.y}%` }}
+            className="absolute pointer-events-none select-none opacity-10 text-xs font-mono font-bold tracking-widest text-emerald-900 z-10 rotate-[-15deg] transition-all duration-1000"
+          >
+            {currentUser.email} • Veda Swasth Secure License
           </div>
         )}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center space-y-3 py-20">
-            <Loader2 className="w-10 h-10 animate-spin text-[#047857]" />
-            <p className="text-sm font-medium">Securely decrypting eBook pages...</p>
+            <Loader2 className="w-8 h-8 animate-spin text-[#047857]" />
+            <p className="text-xs font-medium text-[#526052]">Loading secure document...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center space-y-3 max-w-md">
-            <p className="text-sm text-red-600 font-medium">{error}</p>
-            <button
-              onClick={onBack}
-              className="px-4 py-2 bg-[#064e3b] text-white rounded-xl text-sm"
-            >
-              Return to Library
-            </button>
+          <div className="bg-[#fee2e2] border border-[#fca5a5] text-[#991b1b] p-6 rounded-2xl max-w-md text-center space-y-2">
+            <ShieldCheck className="w-8 h-8 mx-auto text-[#991b1b]" />
+            <p className="text-sm font-semibold">{error}</p>
           </div>
         ) : (
-          <div className={`relative rounded-2xl overflow-hidden ${canvasBgClass[theme]} p-2 sm:p-4 transition-all`}>
-            {/* Faint Moving Watermark */}
-            <div 
-              className="absolute z-20 pointer-events-none select-none text-[11px] font-mono tracking-widest text-emerald-800/25 dark:text-emerald-300/20 px-3 py-1 rounded rotate-[-15deg] transition-all duration-1000 ease-in-out"
-              style={{ top: `${watermarkPos.y}%`, left: `${watermarkPos.x}%` }}
-            >
-              {currentUser.email} • Veda Swasth Secure Copy
-            </div>
+          <div className={`relative shadow-2xl rounded-2xl overflow-hidden border border-[#d4cbb3] dark:border-gray-800 ${canvasBgClass}`}>
+            <canvas ref={canvasRef} className="max-w-full h-auto block" />
+            {!isFocused && (
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-md flex flex-col items-center justify-center text-white p-6 space-y-2 text-center">
+                <EyeOff className="w-10 h-10 text-[#fbbf24]" />
+                <p className="font-serif text-lg font-bold">Secure Reader Protected</p>
+                <p className="text-xs text-gray-300">Click back into window to resume reading.</p>
+              </div>
+            )}
+          </div>
+        )}
 
-            <canvas ref={canvasRef} className="max-w-full h-auto rounded shadow-sm block mx-auto" />
+        {/* Preview End CTA Banner */}
+        {isPreview && pageNum === sampleLimit && (
+          <div className="mt-8 bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-4 shadow-lg">
+            <Sparkles className="w-8 h-8 text-[#d97706] mx-auto" />
+            <h4 className="font-serif text-xl font-bold text-[#064e3b]">End of Free Preview</h4>
+            <p className="text-xs text-[#526052] leading-relaxed">
+              You have experienced the sample pages of <span className="font-semibold">{ebook.title}</span>. Unlock full lifetime access instantly on Cosmofeed.
+            </p>
+            <a
+              href={ebook.cosmofeedUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center space-x-2 w-full py-3.5 bg-[#d97706] text-white rounded-xl font-semibold hover:bg-[#b45309] transition-colors shadow-md text-sm"
+            >
+              <span>Unlock Full Masterclass on Cosmofeed</span>
+              <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
         )}
       </div>
 
-      {/* Reader Footer Navigation Bar */}
-      <div className="sticky bottom-0 z-30 bg-inherit/90 backdrop-blur-md border-b border-current/10 px-4 py-3 flex items-center justify-between shadow-xs">
+      {/* Bottom Navigation Footer */}
+      <div className="bg-[#f5f0e1]/90 dark:bg-[#18221d]/90 backdrop-blur-md border-t border-[#e5dec9] dark:border-[#2a3830] px-4 py-3 flex items-center justify-between z-20 shadow-xs">
         <button
           onClick={handlePrevPage}
           disabled={pageNum <= 1}
-          className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-current/10 hover:bg-current/20 disabled:opacity-40 transition-colors text-sm font-medium"
+          className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-[#e5dec9] dark:bg-[#2a3830] text-[#064e3b] dark:text-[#a7f3d0] font-medium text-xs hover:bg-[#d8ceb4] transition-colors disabled:opacity-40"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Previous</span>
         </button>
 
-        <div className="flex items-center space-x-2 text-xs sm:text-sm font-medium">
-          <span>Page {pageNum} of {numPages || '...'}</span>
-          {bookmarks.includes(pageNum) && (
-            <span className="bg-[#d97706] text-white px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
-              Bookmarked
-            </span>
-          )}
+        <div className="text-xs font-medium text-[#526052] dark:text-gray-300">
+          Page {pageNum} of {sampleLimit}
         </div>
 
         <button
           onClick={handleNextPage}
-          disabled={pageNum >= numPages}
-          className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-current/10 hover:bg-current/20 disabled:opacity-40 transition-colors text-sm font-medium"
+          disabled={!isPreview && pageNum >= numPages}
+          className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-[#064e3b] text-[#f4ecd8] font-medium text-xs hover:bg-[#043d2e] transition-colors shadow-xs disabled:opacity-40"
         >
-          <span>Next</span>
+          <span>{isPreview && pageNum === sampleLimit ? 'Unlock Full' : 'Next'}</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

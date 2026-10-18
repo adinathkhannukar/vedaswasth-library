@@ -1,4 +1,4 @@
-import { EBook, Customer, AccessGrant, ReadingProgress, Bookmark } from '../types';
+import { EBook, Customer, AccessGrant, ReadingProgress, Bookmark, PromoBanner } from '../types';
 
 export const ADMIN_EMAIL = 'adinathkhannukar7084@gmail.com';
 export const WHATSAPP_NUMBER = '918310828152'; // Admin WhatsApp number
@@ -11,7 +11,9 @@ const STORAGE_KEYS = {
   BOOKMARKS: 'veda_swasth_bookmarks',
   CURRENT_USER: 'veda_swasth_current_user',
   SESSION_ID: 'veda_swasth_session_id',
-  SUPABASE_CONFIG: 'veda_swasth_supabase_config'
+  SUPABASE_CONFIG: 'veda_swasth_supabase_config',
+  PROMOS: 'veda_swasth_promos',
+  PROMO_ENABLED: 'veda_swasth_promo_enabled'
 };
 
 const DEFAULT_EBOOKS: EBook[] = [
@@ -24,6 +26,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     description: 'Discover ancient Ayurvedic secrets to calm an overactive mind, balance your doshas, and achieve restorative sleep naturally without sedatives.',
     cosmofeedUrl: 'https://cosmofeed.com/vig/ayurvedic-sleep-guide',
     active: true,
+    enableSample: true,
+    samplePages: 3,
     createdAt: new Date().toISOString()
   },
   {
@@ -35,6 +39,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     description: 'A complete step-by-step masterclass on breath control techniques to oxygenate cells, clear mental fog, and activate parasympathetic healing.',
     cosmofeedUrl: 'https://cosmofeed.com/vig/pranayama-mastery',
     active: true,
+    enableSample: true,
+    samplePages: 3,
     createdAt: new Date().toISOString()
   },
   {
@@ -46,6 +52,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     description: 'Transform your kitchen into an apothecary. Over 80 wholesome recipes designed to kindle Agni, detoxify gently, and radiate vitality.',
     cosmofeedUrl: 'https://cosmofeed.com/vig/sattvic-kitchen',
     active: true,
+    enableSample: true,
+    samplePages: 3,
     createdAt: new Date().toISOString()
   },
   {
@@ -57,6 +65,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     description: 'Explore the emotional blueprint of your mind-body constitution and learn targeted meditation tools to dissolve anxiety and anger.',
     cosmofeedUrl: 'https://cosmofeed.com/vig/emotional-balance',
     active: true,
+    enableSample: true,
+    samplePages: 3,
     createdAt: new Date().toISOString()
   }
 ];
@@ -87,6 +97,31 @@ const DEFAULT_GRANTS: AccessGrant[] = [
   { id: 'g-4', customerId: 'cust-admin', ebookId: 'eb-4', grantedAt: new Date().toISOString() },
   { id: 'g-5', customerId: 'cust-1', ebookId: 'eb-1', grantedAt: new Date().toISOString() },
   { id: 'g-6', customerId: 'cust-1', ebookId: 'eb-2', grantedAt: new Date().toISOString() }
+];
+
+const DEFAULT_PROMOS: PromoBanner[] = [
+  {
+    id: 'promo-1',
+    title: 'Complete Veda Swasth Masterclass Bundle',
+    subtitle: 'Unlock all 4 transformative wellness & Ayurveda guides at 50% special discount today.',
+    imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&h=500&fit=crop',
+    linkUrl: 'https://cosmofeed.com/vig/all-masterclasses-bundle',
+    buttonText: 'Claim 50% Off Offer',
+    badgeText: 'Special Bundle Offer',
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'promo-2',
+    title: 'Pranayama & Breathwork Live Masterclass',
+    subtitle: 'Master ancient breathing science for profound stress immunity and mental clarity.',
+    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=1200&h=500&fit=crop',
+    linkUrl: 'https://cosmofeed.com/vig/pranayama-mastery',
+    buttonText: 'Enroll Now',
+    badgeText: 'Live Workshop',
+    active: true,
+    createdAt: new Date().toISOString()
+  }
 ];
 
 export function getStoredEBooks(): EBook[] {
@@ -168,6 +203,33 @@ export function getStoredBookmarks(): Bookmark[] {
 
 export function saveBookmarks(bookmarks: Bookmark[]) {
   localStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(bookmarks));
+}
+
+export function getStoredPromos(): PromoBanner[] {
+  const data = localStorage.getItem(STORAGE_KEYS.PROMOS);
+  if (!data) {
+    localStorage.setItem(STORAGE_KEYS.PROMOS, JSON.stringify(DEFAULT_PROMOS));
+    return DEFAULT_PROMOS;
+  }
+  try {
+    return JSON.parse(data);
+  } catch {
+    return DEFAULT_PROMOS;
+  }
+}
+
+export function savePromos(promos: PromoBanner[]) {
+  localStorage.setItem(STORAGE_KEYS.PROMOS, JSON.stringify(promos));
+}
+
+export function getPromoEnabled(): boolean {
+  const val = localStorage.getItem(STORAGE_KEYS.PROMO_ENABLED);
+  if (val === null) return true;
+  return val === 'true';
+}
+
+export function setPromoEnabled(enabled: boolean) {
+  localStorage.setItem(STORAGE_KEYS.PROMO_ENABLED, enabled ? 'true' : 'false');
 }
 
 export function getCurrentUser(): Customer | null {

@@ -7,6 +7,8 @@ export interface EBook {
   description: string;
   cosmofeedUrl: string;
   active: boolean;
+  enableSample?: boolean;
+  samplePages?: number;
   createdAt: string;
 }
 
@@ -41,6 +43,18 @@ export interface Bookmark {
   ebookId: string;
   pageNumber: number;
   note?: string;
+  createdAt: string;
+}
+
+export interface PromoBanner {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  linkUrl: string;
+  buttonText: string;
+  badgeText?: string;
+  active: boolean;
   createdAt: string;
 }
 

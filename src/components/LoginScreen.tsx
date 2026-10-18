@@ -79,7 +79,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const handleWhatsAppSupport = () => {
-    const text = encodeURIComponent(`Namaste! I would like to purchase Veda Swasth eBooks and request access for my email: ${email}`);
+    const text = encodeURIComponent(`Namaste, I have purchased the eBook. Please grant me access to my library using my email address: ${email || 'N/A'}. Thank you!`);
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank');
   };
 

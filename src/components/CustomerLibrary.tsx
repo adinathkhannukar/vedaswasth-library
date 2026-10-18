@@ -2,26 +2,36 @@ import React, { useState } from 'react';
 import { Customer, EBook } from '../types';
 import { getStoredEBooks, getStoredGrants, getStoredProgress } from '../lib/storage';
 import { EBookCover } from './EBookCover';
-import { BookOpen, Lock, ExternalLink, Play, Sparkles, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Lock, ExternalLink, Play, Sparkles, CheckCircle2, Search, X } from 'lucide-react';
+import { PromoBannerCarousel } from './PromoBannerCarousel';
 
 interface CustomerLibraryProps {
   currentUser: Customer;
   onOpenReader: (ebook: EBook) => void;
+  onOpenPreview: (ebook: EBook) => void;
 }
 
 export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
   currentUser,
-  onOpenReader
+  onOpenReader,
+  onOpenPreview
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'mine' | 'store'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const ebooks = getStoredEBooks().filter(e => e.active);
   const grants = getStoredGrants().filter(g => g.customerId === currentUser.id);
   const ownedEbookIds = new Set(grants.map(g => g.ebookId));
   const progressList = getStoredProgress().filter(p => p.customerId === currentUser.id);
 
-  const myEbooks = ebooks.filter(e => ownedEbookIds.has(e.id));
-  const moreEbooks = ebooks.filter(e => !ownedEbookIds.has(e.id));
+  const filteredEbooks = ebooks.filter(e => 
+    e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.subtitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const myEbooks = filteredEbooks.filter(e => ownedEbookIds.has(e.id));
+  const moreEbooks = filteredEbooks.filter(e => !ownedEbookIds.has(e.id));
 
   const displayName = currentUser.name || currentUser.email.split('@')[0];
 
@@ -57,38 +67,64 @@ export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
         </div>
       </div>
 
-      {/* Tabs / Filter */}
-      <div className="flex items-center space-x-2 border-b border-[#e5dec9] pb-3">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            activeTab === 'all'
-              ? 'bg-[#064e3b] text-[#f4ecd8] shadow-xs'
-              : 'text-[#526052] hover:bg-[#ede7d3]'
-          }`}
-        >
-          All Masterclasses ({ebooks.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('mine')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            activeTab === 'mine'
-              ? 'bg-[#064e3b] text-[#f4ecd8] shadow-xs'
-              : 'text-[#526052] hover:bg-[#ede7d3]'
-          }`}
-        >
-          My eBooks ({myEbooks.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('store')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            activeTab === 'store'
-              ? 'bg-[#064e3b] text-[#f4ecd8] shadow-xs'
-              : 'text-[#526052] hover:bg-[#ede7d3]'
-          }`}
-        >
-          Explore More ({moreEbooks.length})
-        </button>
+      {/* Promotional Banner Carousel */}
+      <PromoBannerCarousel />
+
+      {/* Search Bar & Tabs Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Tabs / Filter */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shrink-0 ${
+              activeTab === 'all'
+                ? 'bg-[#064e3b] text-[#f4ecd8] shadow-xs'
+                : 'text-[#526052] hover:bg-[#ede7d3]'
+            }`}
+          >
+            All Masterclasses ({filteredEbooks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('mine')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shrink-0 ${
+              activeTab === 'mine'
+                ? 'bg-[#064e3b] text-[#f4ecd8] shadow-xs'
+                : 'text-[#526052] hover:bg-[#ede7d3]'
+            }`}
+          >
+            My eBooks ({myEbooks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('store')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shrink-0 ${
+              activeTab === 'store'
+                ? 'bg-[#064e3b] text-[#f4ecd8] shadow-xs'
+                : 'text-[#526052] hover:bg-[#ede7d3]'
+            }`}
+          >
+            Explore More ({moreEbooks.length})
+          </button>
+        </div>
+
+        {/* Search Input Bar */}
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#738479]" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search masterclasses..."
+            className="w-full pl-10 pr-9 py-2.5 bg-[#f6f2e6] border border-[#dcd2bc] rounded-xl text-xs sm:text-sm text-[#1c2d25] placeholder-[#738479] focus:outline-none focus:ring-2 focus:ring-[#047857] shadow-xs transition-all"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#738479] hover:text-[#064e3b]"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Section: My eBooks */}
@@ -106,7 +142,9 @@ export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
 
           {myEbooks.length === 0 ? (
             <div className="bg-[#f5f0e1] border border-[#e2d8be] rounded-2xl p-8 text-center space-y-3">
-              <p className="text-sm text-[#627065]">You do not have any eBooks unlocked yet.</p>
+              <p className="text-sm text-[#627065]">
+                {searchTerm ? 'No acquired eBooks match your search.' : 'You do not have any eBooks unlocked yet.'}
+              </p>
               <p className="text-xs text-[#7b8a7f]">Explore the collection below and unlock guides via Cosmofeed.</p>
             </div>
           ) : (
@@ -184,7 +222,9 @@ export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
 
           {moreEbooks.length === 0 ? (
             <div className="bg-[#f5f0e1] border border-[#e2d8be] rounded-2xl p-8 text-center space-y-2">
-              <p className="text-sm text-[#627065]">You own all available eBooks in the library!</p>
+              <p className="text-sm text-[#627065]">
+                {searchTerm ? 'No available eBooks match your search.' : 'You own all available eBooks in the library!'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -215,13 +255,24 @@ export const CustomerLibrary: React.FC<CustomerLibraryProps> = ({
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => handleBuyNow(ebook.cosmofeedUrl)}
-                      className="w-full py-3 bg-[#d97706] text-white rounded-xl font-semibold hover:bg-[#b45309] transition-colors flex items-center justify-center space-x-2 shadow-xs text-sm"
-                    >
-                      <span>Buy Now</span>
-                      <ExternalLink className="w-4 h-4" />
-                    </button>
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      {ebook.enableSample !== false && (
+                        <button
+                          onClick={() => onOpenPreview(ebook)}
+                          className="py-2.5 px-2 bg-[#e8e2d0] text-[#064e3b] rounded-xl font-semibold hover:bg-[#ded6c0] transition-colors flex items-center justify-center space-x-1 shadow-xs text-xs"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Free Sample</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleBuyNow(ebook.cosmofeedUrl)}
+                        className={`${ebook.enableSample !== false ? '' : 'col-span-2'} py-2.5 px-2 bg-[#d97706] text-white rounded-xl font-semibold hover:bg-[#b45309] transition-colors flex items-center justify-center space-x-1 shadow-xs text-xs`}
+                      >
+                        <span>Buy Now</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
