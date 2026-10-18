@@ -8,7 +8,8 @@ export interface EBook {
   cosmofeedUrl: string;
   active: boolean;
   enableSample?: boolean;
-  samplePages?: number;
+  sampleStartPage?: number;
+  sampleEndPage?: number;
   createdAt: string;
 }
 

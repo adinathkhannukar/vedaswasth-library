@@ -27,7 +27,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     cosmofeedUrl: 'https://cosmofeed.com/vig/ayurvedic-sleep-guide',
     active: true,
     enableSample: true,
-    samplePages: 3,
+    sampleStartPage: 1,
+    sampleEndPage: 3,
     createdAt: new Date().toISOString()
   },
   {
@@ -40,7 +41,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     cosmofeedUrl: 'https://cosmofeed.com/vig/pranayama-mastery',
     active: true,
     enableSample: true,
-    samplePages: 3,
+    sampleStartPage: 1,
+    sampleEndPage: 3,
     createdAt: new Date().toISOString()
   },
   {
@@ -53,7 +55,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     cosmofeedUrl: 'https://cosmofeed.com/vig/sattvic-kitchen',
     active: true,
     enableSample: true,
-    samplePages: 3,
+    sampleStartPage: 1,
+    sampleEndPage: 3,
     createdAt: new Date().toISOString()
   },
   {
@@ -66,7 +69,8 @@ const DEFAULT_EBOOKS: EBook[] = [
     cosmofeedUrl: 'https://cosmofeed.com/vig/emotional-balance',
     active: true,
     enableSample: true,
-    samplePages: 3,
+    sampleStartPage: 1,
+    sampleEndPage: 3,
     createdAt: new Date().toISOString()
   }
 ];

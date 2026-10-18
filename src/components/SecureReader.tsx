@@ -25,7 +25,10 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
   isPreview = false
 }) => {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
-  const [pageNum, setPageNum] = useState<number>(1);
+  const sampleStart = isPreview ? (ebook.sampleStartPage ?? 1) : 1;
+  const sampleEnd = isPreview ? (ebook.sampleEndPage ?? 3) : 1;
+
+  const [pageNum, setPageNum] = useState<number>(sampleStart);
   const [numPages, setNumPages] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +41,14 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const sampleLimit = isPreview ? Math.min(ebook.samplePages || 3, numPages || 3) : numPages;
+  const sampleLimit = isPreview ? Math.min(sampleEnd, numPages || sampleEnd) : numPages;
+
+  // Set initial page when preview loads
+  useEffect(() => {
+    if (isPreview) {
+      setPageNum(ebook.sampleStartPage ?? 1);
+    }
+  }, [isPreview, ebook.sampleStartPage]);
 
   // Load saved reading progress & bookmarks
   useEffect(() => {
@@ -182,11 +192,12 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
   }, [pdfDoc, pageNum, scale, currentUser, ebook.id, numPages, isPreview]);
 
   const handlePrevPage = () => {
-    if (pageNum > 1) setPageNum(pageNum - 1);
+    const minLimit = isPreview ? (ebook.sampleStartPage ?? 1) : 1;
+    if (pageNum > minLimit) setPageNum(pageNum - 1);
   };
 
   const handleNextPage = () => {
-    const maxLimit = isPreview ? Math.min(ebook.samplePages || 3, numPages) : numPages;
+    const maxLimit = isPreview ? (ebook.sampleEndPage ?? 3) : numPages;
     if (pageNum < maxLimit) {
       setPageNum(pageNum + 1);
     } else if (isPreview) {
@@ -226,6 +237,9 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
 
   const canvasBgClass = theme === 'dark' ? 'bg-[#1a231f]' : theme === 'sepia' ? 'bg-[#fbf6eb]' : 'bg-white';
 
+  const startPg = ebook.sampleStartPage ?? 1;
+  const endPg = ebook.sampleEndPage ?? 3;
+
   return (
     <div 
       ref={containerRef}
@@ -235,7 +249,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
       {/* Top Preview Banner */}
       {isPreview && (
         <div className="bg-[#064e3b] text-[#f4ecd8] px-4 py-2.5 text-center text-xs sm:text-sm font-medium flex flex-wrap items-center justify-center space-x-3 shadow-md z-30 shrink-0">
-          <span>Preview Mode: Showing first {ebook.samplePages || 3} pages. Unlock full access to continue reading.</span>
+          <span>Preview Mode: Showing pages {startPg} to {endPg}. Unlock full access to continue reading.</span>
           <a
             href={ebook.cosmofeedUrl}
             target="_blank"
@@ -260,7 +274,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
           </button>
           <div>
             <h3 className="font-serif font-bold text-sm text-[#064e3b] dark:text-[#a7f3d0] line-clamp-1">
-              {ebook.title} {isPreview && <span className="text-xs bg-[#d97706] text-white px-2 py-0.5 rounded ml-2">Free Sample</span>}
+              {ebook.title} {isPreview && <span className="text-xs bg-[#d97706] text-white px-2 py-0.5 rounded ml-2">Free Sample (p. {startPg}-{endPg})</span>}
             </h3>
             <p className="text-[11px] text-[#526052] dark:text-[#9ca3af]">
               Page {pageNum} of {sampleLimit} {isPreview ? '(Preview)' : ''}
@@ -362,12 +376,12 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
         )}
 
         {/* Preview End CTA Banner */}
-        {isPreview && pageNum === sampleLimit && (
+        {isPreview && pageNum === endPg && (
           <div className="mt-8 bg-[#f6f2e6] border border-[#dcd2bc] rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-4 shadow-lg">
             <Sparkles className="w-8 h-8 text-[#d97706] mx-auto" />
-            <h4 className="font-serif text-xl font-bold text-[#064e3b]">End of Free Preview</h4>
+            <h4 className="font-serif text-xl font-bold text-[#064e3b]">End of Free Preview (Page {endPg})</h4>
             <p className="text-xs text-[#526052] leading-relaxed">
-              You have experienced the sample pages of <span className="font-semibold">{ebook.title}</span>. Unlock full lifetime access instantly on Cosmofeed.
+              You have read the preview sample pages of <span className="font-semibold">{ebook.title}</span>. Unlock full lifetime access instantly on Cosmofeed.
             </p>
             <a
               href={ebook.cosmofeedUrl}
@@ -386,7 +400,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
       <div className="bg-[#f5f0e1]/90 dark:bg-[#18221d]/90 backdrop-blur-md border-t border-[#e5dec9] dark:border-[#2a3830] px-4 py-3 flex items-center justify-between z-20 shadow-xs">
         <button
           onClick={handlePrevPage}
-          disabled={pageNum <= 1}
+          disabled={pageNum <= startPg}
           className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-[#e5dec9] dark:bg-[#2a3830] text-[#064e3b] dark:text-[#a7f3d0] font-medium text-xs hover:bg-[#d8ceb4] transition-colors disabled:opacity-40"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -402,7 +416,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
           disabled={!isPreview && pageNum >= numPages}
           className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-[#064e3b] text-[#f4ecd8] font-medium text-xs hover:bg-[#043d2e] transition-colors shadow-xs disabled:opacity-40"
         >
-          <span>{isPreview && pageNum === sampleLimit ? 'Unlock Full' : 'Next'}</span>
+          <span>{isPreview && pageNum === endPg ? 'Unlock Full' : 'Next'}</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

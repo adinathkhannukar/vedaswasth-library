@@ -33,7 +33,8 @@ export const AdminPanel: React.FC = () => {
     cosmofeedUrl: '',
     active: true,
     enableSample: true,
-    samplePages: 3
+    sampleStartPage: 1,
+    sampleEndPage: 3
   });
 
   // Grant Access form state
@@ -135,7 +136,8 @@ export const AdminPanel: React.FC = () => {
       cosmofeedUrl: 'https://cosmofeed.com/vig/wellness-ebook',
       active: true,
       enableSample: true,
-      samplePages: 3
+      sampleStartPage: 1,
+      sampleEndPage: 3
     });
     setShowEbookModal(true);
   };
@@ -151,7 +153,8 @@ export const AdminPanel: React.FC = () => {
       cosmofeedUrl: ebook.cosmofeedUrl,
       active: ebook.active,
       enableSample: ebook.enableSample ?? true,
-      samplePages: ebook.samplePages ?? 3
+      sampleStartPage: ebook.sampleStartPage ?? 1,
+      sampleEndPage: ebook.sampleEndPage ?? 3
     });
     setShowEbookModal(true);
   };
@@ -890,16 +893,27 @@ export const AdminPanel: React.FC = () => {
                   <label htmlFor="enableSampleToggle" className="text-sm font-semibold text-[#1c2d25]">Enable Free Sample Preview</label>
                 </div>
                 {ebookForm.enableSample && (
-                  <div className="space-y-1 pl-7">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Sample Pages Count</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={ebookForm.samplePages}
-                      onChange={(e) => setEbookForm({ ...ebookForm, samplePages: parseInt(e.target.value) || 3 })}
-                      className="w-32 px-3 py-2 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
-                    />
+                  <div className="grid grid-cols-2 gap-3 pl-7">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Start Page</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={ebookForm.sampleStartPage}
+                        onChange={(e) => setEbookForm({ ...ebookForm, sampleStartPage: parseInt(e.target.value) || 1 })}
+                        className="w-full px-3 py-2 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">End Page</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={ebookForm.sampleEndPage}
+                        onChange={(e) => setEbookForm({ ...ebookForm, sampleEndPage: parseInt(e.target.value) || 3 })}
+                        className="w-full px-3 py-2 bg-white border border-[#d6ccb2] rounded-xl text-sm focus:ring-2 focus:ring-[#047857]"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
