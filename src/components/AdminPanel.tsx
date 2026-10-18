@@ -6,7 +6,7 @@ import {
   getStoredBookmarks, saveBookmarks, ADMIN_EMAIL,
   getStoredPromos, savePromos, getPromoEnabled, setPromoEnabled
 } from '../lib/storage';
-import { getStoredSupabaseConfig, saveSupabaseConfig } from '../lib/supabaseConfig';
+import { getStoredSupabaseConfig, saveSupabaseConfig, getSupabaseClient } from '../lib/supabaseConfig';
 import { saveFileToIDB, deleteFileFromIDB } from '../lib/idb';
 import { EBookCover } from './EBookCover';
 import { 
@@ -279,6 +279,20 @@ export const AdminPanel: React.FC = () => {
     setCustomers(updatedCustomers);
     saveCustomers(updatedCustomers);
 
+    // Sync to Supabase customers table
+    const supabase = getSupabaseClient();
+    if (supabase && customer) {
+      supabase.from('customers').upsert({
+        id: customer.id,
+        email: customer.email,
+        name: customer.name || '',
+        notes: customer.notes || '',
+        created_at: customer.createdAt
+      }, { onConflict: 'email' }).then(({ error }) => {
+        if (error) console.error('Supabase customer upsert error:', error);
+      });
+    }
+
     // Add grants
     const existingGrants = [...grants];
     selectedEbookIds.forEach(ebookId => {
@@ -332,6 +346,14 @@ export const AdminPanel: React.FC = () => {
     const updatedCustomers = customers.filter(c => c.id !== customerId);
     setCustomers(updatedCustomers);
     saveCustomers(updatedCustomers);
+
+    // Delete from Supabase customers table
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase.from('customers').delete().eq('id', customerId).then(({ error }) => {
+        if (error) console.error('Supabase customer delete error:', error);
+      });
+    }
 
     const updatedGrants = grants.filter(g => g.customerId !== customerId);
     setGrants(updatedGrants);

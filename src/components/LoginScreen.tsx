@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Customer } from '../types';
 import { getStoredCustomers, getSessionId, WHATSAPP_NUMBER, ADMIN_EMAIL } from '../lib/storage';
+import { getSupabaseClient } from '../lib/supabaseConfig';
 import { Lock, Mail, ArrowRight, ShieldCheck, MessageCircle, Sparkles } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -18,7 +19,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
 
-  const handleRequestCode = (e: React.FormEvent) => {
+  const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       setErrorState({ type: 'invalid_otp', message: 'Please enter a valid email address.' });
@@ -28,29 +29,65 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     setErrorState({ type: null, message: '' });
 
-    setTimeout(() => {
-      const trimmedEmail = email.trim().toLowerCase();
-      const customers = getStoredCustomers();
-      const customer = customers.find(c => c.email.toLowerCase() === trimmedEmail);
+    const trimmedEmail = email.trim().toLowerCase();
+    let hasAccess = false;
 
-      if (!customer && trimmedEmail !== ADMIN_EMAIL.toLowerCase()) {
-        setLoading(false);
-        setErrorState({
-          type: 'unauthorized',
-          message: 'Access not active for this email yet. Please contact us on WhatsApp with your payment screenshot to activate your library access.'
-        });
-        return;
+    if (trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
+      hasAccess = true;
+    }
+
+    const customers = getStoredCustomers();
+    let customer = customers.find(c => c.email.toLowerCase() === trimmedEmail);
+    if (customer) {
+      hasAccess = true;
+    }
+
+    // Query Supabase table customers directly
+    const supabase = getSupabaseClient();
+    if (supabase && !hasAccess) {
+      try {
+        const { data: remoteCustomer } = await supabase
+          .from('customers')
+          .select('*')
+          .ilike('email', trimmedEmail)
+          .maybeSingle();
+
+        if (remoteCustomer) {
+          hasAccess = true;
+          if (!customer) {
+            customer = {
+              id: remoteCustomer.id || 'cust_' + Date.now(),
+              email: remoteCustomer.email,
+              name: remoteCustomer.name || remoteCustomer.email.split('@')[0],
+              notes: remoteCustomer.notes || 'Synced from Supabase',
+              createdAt: remoteCustomer.created_at || new Date().toISOString()
+            };
+            customers.push(customer);
+            localStorage.setItem('veda_swasth_customers', JSON.stringify(customers));
+          }
+        }
+      } catch (err) {
+        console.error('Supabase customer query error:', err);
       }
+    }
 
-      // Generate 6 digit access code
-      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedCode(randomCode);
-      setLoading(false);
-      setStep('otp');
-    }, 500);
+    setLoading(false);
+
+    if (!hasAccess) {
+      setErrorState({
+        type: 'unauthorized',
+        message: 'Access not active for this email yet. Please contact us on WhatsApp with your payment screenshot to activate your library access.'
+      });
+      return;
+    }
+
+    // Generate 6 digit access code
+    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedCode(randomCode);
+    setStep('otp');
   };
 
-  const handleVerifyCode = (e: React.FormEvent) => {
+  const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.trim() !== generatedCode && otp.trim() !== '123456') { // Allow 123456 as backup admin/test code
       setErrorState({ type: 'invalid_otp', message: 'Invalid access pass code. Please try again.' });
@@ -58,37 +95,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      const trimmedEmail = email.trim().toLowerCase();
-      const customers = getStoredCustomers();
-      let customer = customers.find(c => c.email.toLowerCase() === trimmedEmail);
+    const trimmedEmail = email.trim().toLowerCase();
+    const customers = getStoredCustomers();
+    let customer = customers.find(c => c.email.toLowerCase() === trimmedEmail);
 
-      if (!customer && trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
-        customer = {
-          id: 'cust-admin-' + Date.now(),
-          email: ADMIN_EMAIL,
-          name: 'Adinath',
-          activeSessionId: getSessionId(),
-          notes: 'Administrator',
-          createdAt: new Date().toISOString()
-        };
-        customers.push(customer);
-        localStorage.setItem('veda_swasth_customers', JSON.stringify(customers));
+    if (!customer && trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
+      customer = {
+        id: 'cust-admin-' + Date.now(),
+        email: ADMIN_EMAIL,
+        name: 'Adinath',
+        activeSessionId: getSessionId(),
+        notes: 'Administrator',
+        createdAt: new Date().toISOString()
+      };
+      customers.push(customer);
+      localStorage.setItem('veda_swasth_customers', JSON.stringify(customers));
+    }
+
+    if (customer) {
+      const currentSessionId = getSessionId();
+      customer.activeSessionId = currentSessionId;
+      
+      const updated = customers.map(c => c.id === customer!.id ? customer! : c);
+      localStorage.setItem('veda_swasth_customers', JSON.stringify(updated));
+
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          await supabase.from('customers').upsert({
+            id: customer.id,
+            email: customer.email,
+            name: customer.name || '',
+            active_session_id: currentSessionId,
+            notes: customer.notes || '',
+            created_at: customer.createdAt
+          }, { onConflict: 'email' });
+        } catch (err) {
+          console.error('Supabase customer session upsert error:', err);
+        }
       }
 
-      if (customer) {
-        const currentSessionId = getSessionId();
-        customer.activeSessionId = currentSessionId;
-        
-        const updated = customers.map(c => c.id === customer!.id ? customer! : c);
-        localStorage.setItem('veda_swasth_customers', JSON.stringify(updated));
-
-        onLoginSuccess(customer);
-      } else {
-        setLoading(false);
-        setErrorState({ type: 'unauthorized', message: 'Access denied. Email not found.' });
-      }
-    }, 400);
+      setLoading(false);
+      onLoginSuccess(customer);
+    } else {
+      setLoading(false);
+      setErrorState({ type: 'unauthorized', message: 'Access denied. Email not found.' });
+    }
   };
 
   const handleWhatsAppSupport = () => {
