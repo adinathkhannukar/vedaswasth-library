@@ -89,7 +89,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     };
   }, []);
 
-  // Load PDF Document from Supabase Storage
+  // Load PDF Document from Supabase Storage or direct URL
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -98,15 +98,19 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
     const loadPdf = async () => {
       try {
         let pdfUrl = ebook.pdfUrl;
-        const supabase = getSupabaseClient();
+        const path = (ebook.pdfPath || '').trim();
 
-        if (supabase && ebook.pdfPath) {
-          const { data } = supabase.storage
-            .from('secure-ebooks')
-            .getPublicUrl(ebook.pdfPath);
-
-          if (data?.publicUrl) {
-            pdfUrl = data.publicUrl;
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          pdfUrl = path;
+        } else if (path) {
+          const supabase = getSupabaseClient();
+          if (supabase) {
+            const { data } = supabase.storage
+              .from('secure-ebooks')
+              .getPublicUrl(path);
+            if (data?.publicUrl) {
+              pdfUrl = encodeURI(data.publicUrl);
+            }
           }
         }
 
@@ -129,7 +133,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
           }
           pdfSource = { data: bytes };
         } else {
-          pdfSource = { url: pdfUrl };
+          pdfSource = { url: pdfUrl, withCredentials: false };
         }
 
         const loadingTask = pdfjsLib.getDocument(pdfSource);
@@ -139,7 +143,7 @@ export const SecureReader: React.FC<SecureReaderProps> = ({
         setNumPages(doc.numPages);
         setLoading(false);
       } catch (err) {
-        console.error('Error loading PDF from Supabase:', err);
+        console.error('Error loading PDF from Supabase Storage:', err);
         if (!isMounted) return;
         setError('Unable to load eBook file from Supabase. Please verify the file name.');
         setLoading(false);

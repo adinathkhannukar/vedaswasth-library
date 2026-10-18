@@ -843,17 +843,17 @@ export const AdminPanel: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Supabase Storage File Name / Path *</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">Supabase File Name or Full Public URL *</label>
                 <input
                   type="text"
                   required
                   value={ebookForm.pdfPath}
                   onChange={(e) => setEbookForm({ ...ebookForm, pdfPath: e.target.value })}
-                  placeholder="e.g. New Mudra E-Book Guide.pdf"
+                  placeholder="Paste Supabase Public URL or file name (e.g., https://.../file.pdf)"
                   className="w-full px-4 py-2.5 bg-white border border-[#d6ccb2] rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#047857]"
                 />
                 <p className="text-[11px] text-[#738479]">
-                  Enter the exact file name uploaded in your Supabase 'secure-ebooks' bucket.
+                  Enter the exact file name in your 'secure-ebooks' bucket or a full public URL.
                 </p>
               </div>
 
