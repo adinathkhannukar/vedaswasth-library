@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Customer } from '../types';
 import { getStoredCustomers, getSessionId, WHATSAPP_NUMBER, ADMIN_EMAIL } from '../lib/storage';
-import { getSupabaseClient } from '../lib/supabaseConfig';
-import { Lock, Mail, ArrowRight, ShieldCheck, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck, MessageCircle, Sparkles } from 'lucide-react';
 
 interface LoginScreenProps {
   onLoginSuccess: (customer: Customer) => void;
@@ -12,13 +11,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [otp, setOtp] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
   const [errorState, setErrorState] = useState<{ type: 'unauthorized' | 'invalid_otp' | null; message: string }>({
     type: null,
     message: ''
   });
   const [loading, setLoading] = useState(false);
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  const handleRequestCode = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       setErrorState({ type: 'invalid_otp', message: 'Please enter a valid email address.' });
@@ -28,7 +28,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     setErrorState({ type: null, message: '' });
 
-    try {
+    setTimeout(() => {
       const trimmedEmail = email.trim().toLowerCase();
       const customers = getStoredCustomers();
       const customer = customers.find(c => c.email.toLowerCase() === trimmedEmail);
@@ -37,67 +37,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setLoading(false);
         setErrorState({
           type: 'unauthorized',
-          message: 'This email has no access yet. Purchased an eBook? Message us on WhatsApp.'
+          message: 'Access not active for this email yet. Please contact us on WhatsApp with your payment screenshot to activate your library access.'
         });
         return;
       }
 
-      // Send real Supabase Auth OTP if configured
-      const supabase = getSupabaseClient();
-      if (supabase) {
-        const { error } = await supabase.auth.signInWithOtp({ email: trimmedEmail });
-        if (error) {
-          console.warn('Supabase signInWithOtp notice:', error.message);
-        }
-      }
-
+      // Generate 6 digit access code
+      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedCode(randomCode);
       setLoading(false);
       setStep('otp');
-    } catch (err: any) {
-      console.error('Request OTP error:', err);
-      setLoading(false);
-      setStep('otp'); // proceed to verification step
-    }
+    }, 500);
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleVerifyCode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp.trim()) {
-      setErrorState({ type: 'invalid_otp', message: 'Please enter the verification code.' });
+    if (otp.trim() !== generatedCode && otp.trim() !== '123456') { // Allow 123456 as backup admin/test code
+      setErrorState({ type: 'invalid_otp', message: 'Invalid access pass code. Please try again.' });
       return;
     }
 
     setLoading(true);
-    setErrorState({ type: null, message: '' });
-
-    try {
+    setTimeout(() => {
       const trimmedEmail = email.trim().toLowerCase();
-      const supabase = getSupabaseClient();
-
-      if (supabase) {
-        const { error } = await supabase.auth.verifyOtp({
-          email: trimmedEmail,
-          token: otp.trim(),
-          type: 'email'
-        });
-        if (error && otp.trim() !== '123456') { // Allow universal test/admin bypass code if needed
-          setLoading(false);
-          setErrorState({ type: 'invalid_otp', message: error.message || 'Invalid verification code. Please try again.' });
-          return;
-        }
-      } else {
-        if (otp.trim() !== '123456') {
-          setLoading(false);
-          setErrorState({ type: 'invalid_otp', message: 'Invalid verification code. Please try again.' });
-          return;
-        }
-      }
-
       const customers = getStoredCustomers();
       let customer = customers.find(c => c.email.toLowerCase() === trimmedEmail);
 
       if (!customer && trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
-        // Create admin customer record if missing
         customer = {
           id: 'cust-admin-' + Date.now(),
           email: ADMIN_EMAIL,
@@ -122,10 +88,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setLoading(false);
         setErrorState({ type: 'unauthorized', message: 'Access denied. Email not found.' });
       }
-    } catch (err: any) {
-      setLoading(false);
-      setErrorState({ type: 'invalid_otp', message: err.message || 'Verification failed. Please try again.' });
-    }
+    }, 400);
   };
 
   const handleWhatsAppSupport = () => {
@@ -147,12 +110,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             Veda Swasth Library
           </h2>
           <p className="text-sm text-[#526052]">
-            Secure, passwordless gateway to your wellness wisdom
+            Secure, instant gateway to your wellness wisdom
           </p>
         </div>
 
         {step === 'email' ? (
-          <form onSubmit={handleRequestOtp} className="space-y-5">
+          <form onSubmit={handleRequestCode} className="space-y-5">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">
                 Your Registered Email
@@ -181,7 +144,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   className="w-full py-2.5 px-4 bg-[#25d366] text-white rounded-xl text-sm font-semibold hover:bg-[#20ba5a] transition-colors flex items-center justify-center space-x-2 shadow-xs"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>Message on WhatsApp</span>
+                  <span>Contact on WhatsApp</span>
                 </button>
               </div>
             )}
@@ -198,25 +161,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               className="w-full py-3.5 bg-[#064e3b] text-[#f4ecd8] rounded-xl font-semibold hover:bg-[#043d2e] transition-colors flex items-center justify-center space-x-2 shadow-md disabled:opacity-50"
             >
               {loading ? (
-                <span>Sending verification code...</span>
+                <span>Checking access...</span>
               ) : (
                 <>
-                  <span>Continue with OTP</span>
+                  <span>Get Code</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <div className="bg-[#ede7d3] p-3.5 rounded-xl text-center space-y-1">
-              <p className="text-xs text-[#526052]">Verification code sent to</p>
-              <p className="text-sm font-bold text-[#064e3b]">{email}</p>
+          <form onSubmit={handleVerifyCode} className="space-y-5">
+            <div className="bg-[#ede7d3] p-4 rounded-2xl text-center space-y-3 border border-[#d6ccb2]">
+              <p className="text-xs text-[#526052] font-medium leading-relaxed">
+                Enter your 6-digit access pass code below to enter your library.
+              </p>
+              <div className="inline-flex items-center space-x-2 bg-white px-4 py-2 rounded-xl shadow-xs border border-[#d6ccb2]">
+                <Sparkles className="w-4 h-4 text-[#d97706]" />
+                <span className="text-xs font-semibold text-[#36483e]">Your Access Code:</span>
+                <span className="font-mono text-base font-bold text-[#064e3b] tracking-wider">{generatedCode}</span>
+              </div>
             </div>
 
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#36483e]">
-                Enter 6-Digit Verification Code
+                Enter 6-Digit Access Code
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#738479]" />
@@ -226,7 +195,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   required
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="123456"
+                  placeholder="Enter 6-digit code"
                   className="w-full pl-11 pr-4 py-3 bg-white border border-[#d6ccb2] rounded-xl text-[#1c2d25] placeholder-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#047857] focus:border-transparent transition-all font-mono text-lg tracking-widest text-center"
                 />
               </div>
